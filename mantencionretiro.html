@@ -326,11 +326,17 @@
         const data = await response.json();
         
         if(data.success) {
-             Swal.fire({ title: '¡Listo!', text: 'Solicitud procesada correctamente.', icon: 'success', confirmButtonColor: '#d32f2f' })
-            .then(() => { 
-                document.getElementById('resultadosArea').classList.add('hidden');
-                setTimeout(() => { buscar(); }, 500); 
-            }); 
+             Swal.fire({ 
+                 title: '¡Listo!', 
+                 text: 'Solicitud procesada correctamente. Lo redirigiremos al inicio.', 
+                 icon: 'success', 
+                 confirmButtonColor: '#d32f2f' 
+             }).then(() => { 
+                 // Limpiamos la sesión por seguridad
+                 sessionStorage.clear();
+                 // Redirigimos al inicio
+                 window.location.href = 'index.html'; 
+             }); 
         } else {
              Swal.fire('Error', data.message || 'Error al procesar en SAP', 'error');
         }
@@ -339,6 +345,3 @@
         Swal.fire('Error', 'Fallo de conexión al enviar la solicitud a n8n.', 'error');
     }
   }
-</script>
-</body>
-</html>
