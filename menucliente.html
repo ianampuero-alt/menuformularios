@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Clientes - ALO Group</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    body { background-color: #f5f5f5; font-family: Arial, sans-serif; }
+    .container-menu { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; padding: 20px; }
+    .card-menu { width: 100%; max-width: 400px; padding: 30px; background-color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 8px; }
+    .btn-service { margin: 10px 0; width: 100%; height: 50px; font-weight: bold; border-radius: 5px;}
+    .header-title { text-align: center; margin-bottom: 5px; font-size: 1.8em; color: #333; font-weight: bold;}
+    .welcome-text { text-align: center; margin-bottom: 25px; color: #666; font-size: 1.1em; }
+    .logout-link { display: block; text-align: center; margin-top: 20px; cursor: pointer; color: #d32f2f; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="container container-menu">
+    <div class="card-menu">
+      <div class="header-title">SERVICIOS</div>
+      <div class="welcome-text" id="welcomeMessage">Cargando perfil...</div>
+      
+      <button class="btn btn-service waves-effect waves-light blue darken-2" type="button" onclick="irAServicio('formulario.html')">
+        <i class="material-icons left">assignment_ind</i> Actualizar mis datos
+      </button>
+
+      <button class="btn btn-service waves-effect waves-light grey" type="button" onclick="mostrarToastNoDisponible()">
+        <i class="material-icons left">build</i> Solicitar Mantención
+      </button>
+      
+      <button class="btn btn-service waves-effect waves-light grey" type="button" onclick="mostrarToastNoDisponible()">
+        <i class="material-icons left">local_shipping</i> Solicitar Retiro
+      </button>
+
+      <a class="logout-link" onclick="cerrarSesion()">Cerrar Sesión</a>
+
+    </div>
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+    // 1. Validar que el usuario sí pasó por el OTP
+    document.addEventListener('DOMContentLoaded', () => {
+      const storedData = sessionStorage.getItem('sapClientData');
+      
+      if (!storedData) {
+        // Si alguien intenta entrar directo a menu.html sin loguearse, lo echamos
+        M.toast({html: '⚠️ Acceso denegado. Por favor, valide su RUT.', classes: 'red darken-1'});
+        setTimeout(() => {
+          window.location.href = 'index.html'; // Asegúrate de que index.html sea tu página de login/OTP
+        }, 2000);
+        return;
+      }
+
+      // 2. Mostrar la Razón Social del cliente (Queda muy profesional)
+      const clientData = JSON.parse(storedData);
+      document.getElementById('welcomeMessage').innerText = `Hola, ${clientData.RazonSocial || 'Cliente'}`;
+    });
+
+    // 3. Función para ir a los formularios activos
+    function irAServicio(urlDestino) {
+      window.location.href = urlDestino;
+    }
+
+    // 4. Función para servicios en construcción
+    function mostrarToastNoDisponible() { 
+      M.toast({html: '⏳ Este servicio estará disponible próximamente.', classes: 'orange darken-2'}); 
+    }
+
+    // 5. Cerrar sesión limpiando la memoria
+    function cerrarSesion() {
+      sessionStorage.clear();
+      window.location.href = 'index.html'; // Cambia esto por tu HTML inicial
+    }
+  </script>
+</body>
+</html>
