@@ -1,338 +1,361 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Actualización Cliente</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <style>
-      body { background-color: #f5f5f5; }
-      .container { margin-top: 10px; }
-      .card-panel { padding: 10px; }
-      .input-field { margin-bottom: 2px; margin-top: 2px; }
-      .loader-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(0, 0, 0, 0.7); display: none; flex-direction: column;
-        justify-content: center; align-items: center; z-index: 9999; color: white; text-align: center;
-      }
-      .loader-spinner {
-        border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff;
-        border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 10px;
-      }
-      .loader-text { font-size: 1.2em; font-weight: bold; }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-  </head>
-  <body>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal de Solicitudes - ALO</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  
+  <style>
+    body { background-color: #f4f6f9; padding: 20px; font-family: sans-serif; }
+    .card { border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 10px; background: white; }
+    .header-alo { background-color: #d32f2f; color: white; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+    .hidden { display: none !important; }
+    .btn-dark { background-color: #2c3e50; border-color: #2c3e50; }
+
+    .tabla-contratos { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+    .fila-contrato { background-color: white; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .fila-contrato:hover { transform: scale(1.005); border-left: 5px solid #d32f2f; }
+    .fila-contrato td { padding: 15px; vertical-align: middle; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
     
-    <div id="loader" class="loader-overlay">
-      <div class="loader-spinner"></div>
-      <div id="loaderText" class="loader-text">Cargando datos cliente...</div>
+    .fila-detalle { background-color: #f8f9fa; }
+    .contenedor-equipos { padding: 20px; border-left: 5px solid #d32f2f; margin: 10px 0; background: white; border-radius: 0 5px 5px 0; }
+    
+    .item-equipo { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .item-equipo:last-child { border-bottom: none; }
+    .info-equipo { flex: 1; min-width: 250px; }
+    .acciones-equipo { display: flex; gap: 5px; margin-top: 10px; }
+    .btn-accion { font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+  </style>
+</head>
+<body>
+
+<div class="container" style="max-width: 900px;">
+  
+  <div class="header-alo text-center position-relative">
+    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-light position-absolute" style="left: 15px; top: 15px;">
+      <i class="bi bi-arrow-left"></i> Volver
+    </button>
+    <h3 class="m-0" style="padding-top: 5px;">Solicitud de Retiro / Mantención</h3>
+  </div>
+
+  <div class="card p-4 mb-4">
+    <label class="form-label fw-bold">RUT del Cliente</label>
+    <div class="input-group">
+      <input type="text" id="rutInput" class="form-control" placeholder="Ej: 76218944-5" oninput="checkRut(this)" readonly>
+      <button class="btn btn-dark" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
     </div>
+    <div class="form-text text-muted">Buscando los contratos asociados a su empresa.</div>
     
-    <div class="container">
-      <div class="row">
-        <div class="col s12">
-          <div class="card-panel grey lighten-5 z-depth-1">
-            <h4 class="center-align">Actualización de Datos</h4>
-            <div class="row">
-              <form class="col s12" id="myForm">
-                <div class="row">
-                  <div class="input-field col s12">
-                    <input id="RutEmpresa" type="text" class="validate" name="RutEmpresa" required readonly>
-                    <label for="RutEmpresa" class="active">RUT Empresa (formato sin puntos y con guion)</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="input-field col s12">
-                    <input id="RazonSocial" type="text" class="validate" name="RazonSocial">
-                    <label for="RazonSocial" class="active">Razón Social</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="input-field col s12">
-                    <select id="Industria" name="Industria">
-                      <option value="" disabled selected>Seleccione una industria</option>
-                      <option value="Construcción">Construcción</option>
-                      <option value="Minería">Minería</option>
-                      <option value="Agrícola">Agrícola</option>
-                      <option value="Industrial">Industrial</option>
-                      <option value="Comercio">Comercio</option>
-                      <option value="Servicios">Servicios</option>
-                      <option value="Otros">Otros</option>
-                    </select>
-                    <label>Industria</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="input-field col s12">
-                    <input id="CalleNumero" type="text" class="validate" name="CalleNumero">
-                    <label for="CalleNumero" class="active">Calle y Número</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="input-field col s12">
-                    <input id="Comuna" type="text" class="validate" name="Comuna">
-                    <label for="Comuna" class="active">Comuna</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="input-field col s12">
-                    <select id="Region" name="Region">
-                      <option value="" disabled selected>Seleccione una región</option>
-                      <option value="Región de Arica y Parinacota">Arica y Parinacota</option>
-                      <option value="Región de Tarapacá">Tarapacá</option>
-                      <option value="Región de Antofagasta">Antofagasta</option>
-                      <option value="Región de Atacama">Atacama</option>
-                      <option value="Región de Coquimbo">Coquimbo</option>
-                      <option value="Región de Valparaíso">Valparaíso</option>
-                      <option value="Región del Libertador Gral. Bernardo O'Higgins">O'Higgins</option>
-                      <option value="Región del Maule">Maule</option>
-                      <option value="Región de Ñuble">Ñuble</option>
-                      <option value="Región del Biobío">Biobío</option>
-                      <option value="Región de La Araucanía">Araucanía</option>
-                      <option value="Región de Los Ríos">Los Ríos</option>
-                      <option value="Región de Los Lagos">Los Lagos</option>
-                      <option value="Región de Aysén del Gral. Carlos Ibáñez del Campo">Aysén</option>
-                      <option value="Región de Magallanes y de la Antártica Chilena">Magallanes</option>
-                      <option value="Región Metropolitana de Santiago">Metropolitana de Santiago</option>
-                    </select>
-                    <label>Región</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <h6 class="center-align">Contacto de Adquisiciones para Firma electrónica</h6>
-                  <div class="input-field col s12">
-                    <input id="NombreAdq" type="text" class="validate" name="NombreAdq">
-                    <label for="NombreAdq" class="active">Nombre</label>
-                  </div>
-                  <div class="input-field col s12">
-                    <input id="RutAdq" type="text" class="validate" name="RutAdq">
-                    <label for="RutAdq" class="active">RUT del contacto</label>
-                  </div>
-                  <div class="input-field col s12">
-                    <input id="EmailAdq" type="email" class="validate" name="EmailAdq">
-                    <label for="EmailAdq" class="active">Email</label>
-                  </div>
-                  <div class="input-field col s12">
-                    <input id="FonoAdq" type="tel" class="validate" name="FonoAdq">
-                    <label for="FonoAdq" class="active">Fono</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <h6 class="center-align">Contacto de Pago a Proveedores</h6>
-                  <div class="input-field col s12">
-                    <input id="NombrePago" type="text" class="validate" name="NombrePago">
-                    <label for="NombrePago" class="active">Nombre completo contacto PP</label>
-                  </div>
-                  <div class="input-field col s12">
-                    <input id="EmailPago" type="email" class="validate" name="EmailPago">
-                    <label for="EmailPago" class="active">Correo electrónico PP</label>
-                  </div>
-                  <div class="input-field col s12">
-                    <input id="FonoPago" type="tel" class="validate" name="FonoPago">
-                    <label for="FonoPago" class="active">Teléfono móvil PP</label>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="input-field col s12">
-                    <button class="btn waves-effect waves-light" type="submit" name="action">Actualizar en SAP
-                      <i class="material-icons right">send</i>
-                    </button>
-                  </div>
-                </div>
-              </form>
+    <div id="loading" class="text-center mt-3 hidden">
+      <div class="spinner-border text-danger" role="status"></div>
+      <br> <span class="ms-2">Buscando contratos en SAP...</span>
+    </div>
+  </div>
+
+  <div id="resultadosArea" class="hidden">
+    <h5 class="mb-3 text-secondary">Contratos Vigentes <small>(Haga clic para ver equipos)</small></h5>
+    <table class="tabla-contratos">
+      <tbody id="tablaBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  // --- CONFIGURACIÓN URLS n8n (CREDENCIALES DE PRUEBA) ---
+  const URL_GET_CONTRATOS = "https://tu-dominio-n8n.com/webhook/get-contratos";
+  const URL_ENVIAR_SOLICITUD = "https://tu-dominio-n8n.com/webhook/solicitudes-sap";
+
+  let contratosData = []; 
+  let emailUsuarioGlobal = "";
+
+  // --- CARGA INICIAL DESDE LA SESIÓN ---
+  window.onload = function() {
+    const storedRut = sessionStorage.getItem('sapRut');
+    const storedData = sessionStorage.getItem('sapClientData');
+    
+    if (!storedRut || !storedData) {
+      Swal.fire('Sesión Caducada', 'Debe iniciar sesión nuevamente.', 'error')
+      .then(() => window.location.href = 'index.html');
+      return;
+    }
+
+    const clientData = JSON.parse(storedData);
+    emailUsuarioGlobal = clientData.Contactos?.Adquisiciones?.Email || ""; 
+
+    // Limpiamos el RUT y lo formateamos
+    let rutLimpio = storedRut.replace(/[^0-9Kk]/g, '');
+    if (rutLimpio.toUpperCase().startsWith('C')) rutLimpio = rutLimpio.substring(1);
+    
+    const inputRut = document.getElementById('rutInput');
+    inputRut.value = rutLimpio;
+    checkRut(inputRut);
+
+    // Ejecutamos la búsqueda automáticamente al entrar a la página
+    buscar(); 
+  };
+
+  // --- FORMATEADOR RUT ---
+  function checkRut(input) {
+    var raw = input.value.toUpperCase().replace(/[^0-9K]/g, "");
+    if (raw.length === 0) { input.value = ""; return; }
+    var dv = raw.slice(-1);       
+    var cuerpo = raw.slice(0, -1); 
+    if (cuerpo.length === 0) { input.value = dv; } 
+    else { input.value = cuerpo + "-" + dv; }
+  }
+
+  // --- LLAMADA A N8N PARA BUSCAR CONTRATOS ---
+  async function buscar() {
+    var rutVisual = document.getElementById('rutInput').value;
+    
+    if(rutVisual.length < 3) { 
+      Swal.fire('RUT Incompleto', 'Ingrese un RUT válido', 'warning'); 
+      return; 
+    }
+    
+    // SAP necesita la "C" al principio del RUT
+    var rutParaSap = "C" + rutVisual;
+
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('resultadosArea').classList.add('hidden'); 
+    document.getElementById('btnBuscar').disabled = true;
+
+    try {
+        const response = await fetch(URL_GET_CONTRATOS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rut: rutParaSap })
+        });
+        
+        const data = await response.json();
+        
+        document.getElementById('btnBuscar').disabled = false;
+        document.getElementById('loading').classList.add('hidden');
+        
+        if(data.success === false) {
+             Swal.fire('Atención', data.message || 'No se encontraron contratos', 'info');
+             return;
+        }
+        
+        renderizarTabla(data.contratos || []);
+        
+    } catch(err) {
+        document.getElementById('btnBuscar').disabled = false;
+        document.getElementById('loading').classList.add('hidden');
+        Swal.fire('Error', 'Fallo de conexión con el servidor.', 'error');
+    }
+  }
+
+  // --- RENDERIZAR TABLA ---
+  function renderizarTabla(contratosArray) {
+    if (!contratosArray || contratosArray.length === 0) {
+      Swal.fire({ title: 'Sin Resultados', text: 'No se encontraron contratos activos.', icon: 'info' });
+      return;
+    }
+
+    contratosData = contratosArray;
+    var tbody = document.getElementById('tablaBody');
+    tbody.innerHTML = ""; 
+
+    contratosData.forEach((contrato, index) => {
+      var nombreObra = contrato.U_Dest || "";
+      var calleObra = contrato.U_DestAddr || "";
+      var direccionCompleta = (nombreObra + " - " + calleObra).trim();
+      if (direccionCompleta === "-" || !direccionCompleta) direccionCompleta = "Sin Ubicación Especificada";
+
+      var filaContrato = `
+        <tr class="fila-contrato" onclick="toggleDetalle(${index})">
+          <td class="fw-bold text-danger" style="width: 15%;">#${contrato.DocNum}</td>
+          <td>
+            <div class="fw-bold">${direccionCompleta}</div>
+            <small class="text-muted">Estado: ${contrato.U_Estado || 'Activo'}</small>
+          </td>
+          <td class="text-end"><i class="bi bi-chevron-down" id="icono-${index}"></i></td>
+        </tr>
+      `;
+
+      var htmlEquipos = generarHtmlEquipos(contrato.VID_RTOVDCollection || [], contrato, direccionCompleta);
+
+      var filaDetalle = `
+        <tr id="detalle-${index}" class="fila-detalle hidden">
+          <td colspan="3">
+            <div class="contenedor-equipos">
+              <h6 class="fw-bold mb-3 text-secondary">Equipos en este contrato:</h6>
+              ${htmlEquipos}
             </div>
+          </td>
+        </tr>
+      `;
+      tbody.innerHTML += filaContrato + filaDetalle;
+    });
+
+    document.getElementById('resultadosArea').classList.remove('hidden');
+  }
+
+  // --- GENERAR HTML EQUIPOS ---
+  function generarHtmlEquipos(equipos, contratoInfo, direccionCompleta) {
+    if (!equipos || equipos.length === 0) return "<p class='text-muted'>Sin equipos listados.</p>";
+    var html = "";
+    equipos.forEach(eq => {
+      var codigo = eq.U_ItemCode || "";
+      var nombre = eq.U_ItemName || "Equipo";
+      var numInterno = eq.U_Dim4 || ""; 
+      var identificador = numInterno ? numInterno : codigo;
+
+      var subF = numInterno.includes("-") ? numInterno.split("-")[0] : "";
+
+      var dataStr = JSON.stringify({
+        contrato: contratoInfo.DocNum,
+        docEntry: contratoInfo.DocEntry,
+        cardName: contratoInfo.U_CardName || "",
+        vendedor: contratoInfo.U_Vendedor || "1",
+        equipoCode: codigo,
+        equipoNombre: nombre,
+        numInterno: numInterno,
+        direccion: direccionCompleta,
+        serie: eq.U_NumSerie || eq.U_NroSerie || "", 
+        familia: eq.U_Familia || "",
+        sFamilia: eq.U_sFamilia || subF
+      }).replace(/"/g, "&quot;");
+
+      html += `
+        <div class="item-equipo">
+          <div class="info-equipo">
+            <span class="fw-bold text-dark fs-5">${identificador}</span><br>
+            <small class="text-muted">${nombre}</small>
+          </div>
+          <div class="acciones-equipo">
+            <button class="btn btn-sm btn-outline-danger btn-accion" onclick="solicitar('Retiro', ${dataStr})">
+              <i class="bi bi-truck"></i> Retiro
+            </button>
+            <button class="btn btn-sm btn-outline-primary btn-accion" onclick="solicitar('Mantenimiento', ${dataStr})">
+              <i class="bi bi-wrench"></i> Servicio
+            </button>
           </div>
         </div>
-      </div>
-    </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script>
-      // 👇 REEMPLAZA ESTA URL POR LA DE TU WEBHOOK DE UPDATE EN N8N 👇
-      const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
+      `;
+    });
+    return html;
+  }
 
-      const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
-      const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
-      const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS);
+  function toggleDetalle(index) {
+    var filaActual = document.getElementById(`detalle-${index}`);
+    var iconoActual = document.getElementById(`icono-${index}`);
+    var estabaCerrada = filaActual.classList.contains('hidden');
+    document.querySelectorAll('.fila-detalle').forEach(fila => fila.classList.add('hidden'));
+    document.querySelectorAll('.bi-chevron-up').forEach(icono => {
+      icono.classList.replace('bi-chevron-up', 'bi-chevron-down');
+    });
+    if (estabaCerrada) {
+      filaActual.classList.remove('hidden');
+      iconoActual.classList.replace('bi-chevron-down', 'bi-chevron-up');
+    }
+  }
 
-      document.addEventListener('DOMContentLoaded', function() {
-        M.FormSelect.init(document.querySelectorAll('select'));
+  // --- SOLICITAR MANTENCIÓN / RETIRO ---
+  function solicitar(tipo, datosEquipo) {
+    var titulo = tipo === 'Retiro' ? "🚚 Solicitud de Retiro" : "🔧 Solicitud de Servicio";
+    var nombreEquipo = datosEquipo.numInterno || datosEquipo.equipoCode;
 
-        // Extraer datos de la sesión guardada en index.html
-        const storedRut = sessionStorage.getItem('sapRut');
-        const storedData = sessionStorage.getItem('sapClientData');
+    var htmlTelefono = "";
+    if (tipo === 'Retiro') {
+      htmlTelefono = `
+        <label class="form-label fw-bold">Teléfono de contacto *</label>
+        <input id="swal-telefono" class="form-control mb-3" placeholder="Ej: +56912345678" type="tel">
+      `;
+    }
 
-        if (!storedRut || !storedData) {
-            // Protección: Si alguien entra directo a esta URL sin pasar por el login, lo devuelve al inicio
-            window.location.href = 'index.html';
-            return;
+    Swal.fire({
+      title: titulo,
+      html: `
+        <div class="text-start">
+          <p class="text-center text-muted">Equipo: <b>${nombreEquipo}</b></p>
+          ${htmlTelefono} 
+          <label class="form-label fw-bold">Detalle / Motivo</label>
+          <textarea id="swal-comentario" class="form-control" style="height: 100px;" placeholder="Indique motivo o falla..."></textarea>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      confirmButtonText: 'Enviar Solicitud',
+      focusConfirm: false,
+      preConfirm: () => {
+        const comentario = document.getElementById('swal-comentario').value.trim();
+        let telefono = "";
+
+        if (tipo === 'Retiro') {
+          telefono = document.getElementById('swal-telefono').value.trim();
+          if (!telefono) {
+            Swal.showValidationMessage('El teléfono es obligatorio para el retiro');
+            return false;
+          }
         }
-
-        document.getElementById('RutEmpresa').value = storedRut;
-        const parsedData = JSON.parse(storedData);
-        fillForm(parsedData);
-
-        ALL_CONTACT_FIELDS.forEach(fieldId => {
-            const input = document.getElementById(fieldId);
-            if (input) input.addEventListener('input', validarCampos);
-        });
-      });
-
-      function fillForm(data) {
-        // Gracias a N8N, los datos ya vienen limpios y estructurados!
-        document.getElementById('RazonSocial').value = data.CardName || '';
-        document.getElementById('Industria').value = data.Industria || '';
         
-        if (data.Direccion) {
-            document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
-            document.getElementById('Comuna').value = data.Direccion.Comuna || '';
-            document.getElementById('Region').value = data.Direccion.Region || '';
-        }
-        
-        if (data.Contactos && data.Contactos.Adquisiciones) {
-            document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
-            document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
-            document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
-            document.getElementById('FonoAdq').value = data.Contactos.Adquisiciones.Fono || '';
+        if (!comentario) {
+          Swal.showValidationMessage('Por favor, ingrese un motivo');
+          return false;
         }
 
-        if (data.Contactos && data.Contactos.PagoProveedores) {
-            document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
-            document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
-            document.getElementById('FonoPago').value = data.Contactos.PagoProveedores.Fono || '';
-        }
-        
-        M.updateTextFields();
-        M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(); 
+        return { telefono: telefono, comentario: comentario };
       }
-
-      function validarCampos() {
-        ALL_CONTACT_FIELDS.forEach(fieldId => {
-            const input = document.getElementById(fieldId);
-            const value = input.value.trim();
-            
-            if (value === '') {
-                input.classList.remove('valid'); input.classList.add('invalid'); return; 
-            }
-            
-            let isFormatValid = true;
-            if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
-            if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
-            if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
-
-            if (!isFormatValid) {
-                input.classList.remove('valid'); input.classList.add('invalid');
-            } else {
-                input.classList.remove('invalid'); input.classList.add('valid');
-            }
-        });
-      }
-
-      document.getElementById('myForm').addEventListener('submit', async function(event) {
-        event.preventDefault();
-        
-        const form = event.target;
-        const formData = new FormData(form);
-        const dataObject = {};
-        formData.forEach((value, key) => { dataObject[key] = value.trim(); });
-        
-        const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
-        dataObject.CardCode = storedData.CardCode;
-       
-        
-        let isValid = true;
-        validarCampos(); 
-
-        const errorMessages = {
-            'NombreAdq': 'El nombre de Adquisiciones es obligatorio.',
-            'RutAdq': 'El RUT de Adquisiciones es obligatorio o inválido.',
-            'EmailAdq': 'El email de Adquisiciones es obligatorio o inválido.',
-            'FonoAdq': 'El teléfono de Adquisiciones es obligatorio o inválido.',
-            'NombrePago': 'El nombre de Pago a Proveedores es obligatorio.',
-            'EmailPago': 'El email de Pago a Proveedores es obligatorio o inválido.',
-            'FonoPago': 'El teléfono de Pago a Proveedores es obligatorio o inválido.'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        var payload = {
+          rut: "C" + document.getElementById('rutInput').value,
+          email: emailUsuarioGlobal, 
+          contrato: datosEquipo.contrato,
+          docEntry: datosEquipo.docEntry,
+          cardName: datosEquipo.cardName,     
+          vendedor: datosEquipo.vendedor,     
+          equipoCode: datosEquipo.equipoCode,
+          equipoNombre: datosEquipo.equipoNombre,
+          numInterno: datosEquipo.numInterno,
+          serie: datosEquipo.serie,
+          familia: datosEquipo.familia,
+          sFamilia: datosEquipo.sFamilia,
+          tipoSolicitud: tipo,
+          telefono: result.value.telefono, 
+          comentarios: result.value.comentario, 
+          direccion: datosEquipo.direccion 
         };
         
-        ALL_CONTACT_FIELDS.forEach(fieldId => {
-            const input = document.getElementById(fieldId);
-            if (dataObject[fieldId] === '' || input.classList.contains('invalid')) {
-                M.toast({html: `❌ ${errorMessages[fieldId] || 'Campo requerido o inválido.'}`, classes: 'red darken-1'});
-                isValid = false;
-            }
+        enviarAlServidor(payload);
+      }
+    });
+  }
+
+  // --- LLAMADA A N8N PARA ENVIAR LA SOLICITUD ---
+  async function enviarAlServidor(payload) {
+    Swal.fire({ title: 'Enviando a SAP...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+    
+    try {
+        const response = await fetch(URL_ENVIAR_SOLICITUD, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
-
-        if (!isValid) return;
-
-        showLoader("Guardando y enviando a SAP...");
-
-        try {
-            const response = await fetch(WEBHOOK_UPDATE_BP, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataObject)
-            });
-            const result = await response.json();
-            
-            hideLoader();
-            
-            if (response.ok && result.success) {
-            // 1. Mostramos el mensajito flotante por si acaso
-            M.toast({html: '✅ ' + result.message, classes: 'green darken-1'});
-            
-            // 2. Limpiamos la sesión por seguridad
-            sessionStorage.clear();
-            
-            // 3. Reemplazamos el formulario con el mensaje gigante de éxito y una barra de carga
-            document.querySelector('.container').innerHTML = `
-                <div class="card-panel center-align" style="margin-top: 50px; padding: 40px; border-radius: 10px;">
-                    <h4 class="green-text text-darken-2">¡Gracias!</h4>
-                    <p style="font-size: 1.2rem;">Sus datos han sido actualizados exitosamente en nuestros sistemas.</p>
-                    <p class="grey-text">Lo estamos redirigiendo a la página principal...</p>
-                    <div class="progress" style="width: 50%; margin: 20px auto;">
-                        <div class="indeterminate"></div>
-                    </div>
-                </div>
-            `;
-            
-            // 4. Esperamos 4 segundos para que el cliente lea el mensaje y luego redirigimos
-            setTimeout(() => {
-                window.top.location.href = "https://alorental.cl/clientes1/";
-            }, 4000);
-            } else {
-                M.toast({html: result.message || '❌ Ocurrió un error al actualizar.', classes: 'red darken-1'});
-            }
-        } catch(e) {
-            hideLoader();
-            M.toast({html: '❌ Error de conexión al intentar guardar.', classes: 'red darken-1'});
+        
+        const data = await response.json();
+        
+        if(data.success) {
+             Swal.fire({ title: '¡Listo!', text: 'Solicitud procesada correctamente.', icon: 'success', confirmButtonColor: '#d32f2f' })
+            .then(() => { 
+                document.getElementById('resultadosArea').classList.add('hidden');
+                setTimeout(() => { buscar(); }, 500); 
+            }); 
+        } else {
+             Swal.fire('Error', data.message || 'Error al procesar en SAP', 'error');
         }
-      });
-
-      function showLoader(msg = "Cargando...") {
-        document.getElementById('loaderText').innerText = msg;
-        document.getElementById('loader').style.display = 'flex';
-      }
-      function hideLoader() { document.getElementById('loader').style.display = 'none'; }
-
-      function validaRut(rutCompleto) {
-        if (!rutCompleto) return false;
-        rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
-        if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
-        var tmp = rutCompleto.split('‐');
-        var digv = tmp[1]; var rut = tmp[0];
-        if (digv == 'K') digv = 'k';
-        return (dv(rut) == digv);
-      }
-      function dv(T) {
-        var M = 0, S = 1;
-        for (; T; T = Math.floor(T / 10)) { S = (S + T % 10 * (9 - M++ % 6)) % 11; }
-        return S ? S - 1 : 'k';
-      }
-      function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-      function isValidPhone(phone) { return /^(\+?56)?(9\d{8}|[2-8]\d{7})$/.test(phone ? phone.trim() : ''); }
-    </script>
-  </body>
+        
+    } catch(err) {
+        Swal.fire('Error', 'Fallo de conexión al enviar la solicitud a n8n.', 'error');
+    }
+  }
+</script>
+</body>
 </html>
