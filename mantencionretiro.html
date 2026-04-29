@@ -33,20 +33,17 @@
 
 <div class="container" style="max-width: 900px;">
   
-  <div class="header-alo text-center position-relative">
-    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-light position-absolute" style="left: 15px; top: 15px;">
-      <i class="bi bi-arrow-left"></i> Volver
-    </button>
-    <h3 class="m-0" style="padding-top: 5px;">Solicitud de Retiro / Mantención</h3>
+  <div class="header-alo text-center">
+    <h3>Solicitud de Retiro / Servicio de Mantención</h3>
   </div>
 
   <div class="card p-4 mb-4">
     <label class="form-label fw-bold">RUT del Cliente</label>
     <div class="input-group">
-      <input type="text" id="rutInput" class="form-control" placeholder="Ej: 76218944-5" oninput="checkRut(this)" readonly>
+      <input type="text" id="rutInput" class="form-control" placeholder="Ej: 76218944-5" oninput="checkRut(this)">
       <button class="btn btn-dark" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
     </div>
-    <div class="form-text text-muted">Buscando los contratos asociados a su empresa.</div>
+    <div class="form-text text-muted">Ingrese su RUT para buscar los contratos asociados.</div>
     
     <div id="loading" class="text-center mt-3 hidden">
       <div class="spinner-border text-danger" role="status"></div>
@@ -66,37 +63,24 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-  // --- CONFIGURACIÓN URLS n8n (CREDENCIALES DE PRUEBA) ---
-  const URL_GET_CONTRATOS = "https://alogroup.app.n8n.cloud/webhook-test/get-contratos";
-  const URL_ENVIAR_SOLICITUD = "https://alogroup.app.n8n.cloud/webhook-test/solicitudes-sap";
+  // --- CONFIGURACIÓN URLS n8n ---
+  const URL_GET_CONTRATOS = "https://ampuero777.app.n8n.cloud/webhook-test/get-contratos";
+  const URL_ENVIAR_SOLICITUD = "https://ampuero777.app.n8n.cloud/webhook-test/solicitudes-sap";
 
   let contratosData = []; 
   let emailUsuarioGlobal = "";
 
-  // --- CARGA INICIAL DESDE LA SESIÓN ---
+  // --- CARGA INICIAL ---
   window.onload = function() {
-    const storedRut = sessionStorage.getItem('sapRut');
-    const storedData = sessionStorage.getItem('sapClientData');
-    
-    if (!storedRut || !storedData) {
-      Swal.fire('Sesión Caducada', 'Debe iniciar sesión nuevamente.', 'error')
-      .then(() => window.location.href = 'index.html');
-      return;
+    const urlParams = new URLSearchParams(window.location.search);
+    let rutParam = urlParams.get('rut');
+    emailUsuarioGlobal = urlParams.get('email') || ""; 
+
+    // Rellenamos el RUT por comodidad, pero NO hacemos la búsqueda automática
+    if (rutParam) {
+      if (rutParam.toUpperCase().startsWith('C')) rutParam = rutParam.substring(1);
+      document.getElementById('rutInput').value = rutParam;
     }
-
-    const clientData = JSON.parse(storedData);
-    emailUsuarioGlobal = clientData.Contactos?.Adquisiciones?.Email || ""; 
-
-    // Limpiamos el RUT y lo formateamos
-    let rutLimpio = storedRut.replace(/[^0-9Kk]/g, '');
-    if (rutLimpio.toUpperCase().startsWith('C')) rutLimpio = rutLimpio.substring(1);
-    
-    const inputRut = document.getElementById('rutInput');
-    inputRut.value = rutLimpio;
-    checkRut(inputRut);
-
-    // Ejecutamos la búsqueda automáticamente al entrar a la página
-    buscar(); 
   };
 
   // --- FORMATEADOR RUT ---
@@ -118,7 +102,6 @@
       return; 
     }
     
-    // SAP necesita la "C" al principio del RUT
     var rutParaSap = "C" + rutVisual;
 
     document.getElementById('loading').classList.remove('hidden');
