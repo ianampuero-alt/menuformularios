@@ -31,10 +31,13 @@
 </head>
 <body>
 
-<div class="container" style="max-width: 900px;">
+<div class="container" id="main-container" style="max-width: 900px;">
   
-  <div class="header-alo text-center">
-    <h3>Solicitud de Retiro / Servicio de Mantención</h3>
+  <div class="header-alo text-center position-relative">
+    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-light position-absolute" style="left: 15px; top: 15px;">
+      <i class="bi bi-arrow-left"></i> Volver
+    </button>
+    <h3 class="m-0" style="padding-top: 5px;">Solicitud de Retiro / Mantención</h3>
   </div>
 
   <div class="card p-4 mb-4">
@@ -43,7 +46,7 @@
       <input type="text" id="rutInput" class="form-control" placeholder="Ej: 76218944-5" oninput="checkRut(this)">
       <button class="btn btn-dark" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
     </div>
-    <div class="form-text text-muted">Ingrese su RUT para buscar los contratos asociados.</div>
+    <div class="form-text text-muted">Ingrese un RUT para probar la conexión con SAP.</div>
     
     <div id="loading" class="text-center mt-3 hidden">
       <div class="spinner-border text-danger" role="status"></div>
@@ -63,23 +66,30 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-  // --- CONFIGURACIÓN URLS n8n ---
-  const URL_GET_CONTRATOS = "https://alogroup.app.n8n.cloud/webhook-test/get-contratos";
-  const URL_ENVIAR_SOLICITUD = "https://alogroup.app.n8n.cloud/webhook-test/solicitudes-sap";
+  const URL_GET_CONTRATOS = "https://alogroup.app.n8n.cloud/webhook/get-contratos";
+  const URL_ENVIAR_SOLICITUD = "https://alogroup.app.n8n.cloud/webhook/solicitudes-sap";
 
   let contratosData = []; 
-  let emailUsuarioGlobal = "";
+  let emailUsuarioGlobal = "prueba@alo.cl"; // Correo por defecto para pruebas manuales
 
-  // --- CARGA INICIAL ---
+  // --- CARGA INICIAL (MODO PRUEBA MANUAL) ---
   window.onload = function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    let rutParam = urlParams.get('rut');
-    emailUsuarioGlobal = urlParams.get('email') || ""; 
+    const storedRut = sessionStorage.getItem('sapRut');
+    const storedData = sessionStorage.getItem('sapClientData');
+    
+    // Si hay sesión guardada, la usamos para rellenar, pero NO echamos al usuario si no hay
+    if (storedData) {
+      const clientData = JSON.parse(storedData);
+      emailUsuarioGlobal = clientData.Contactos?.Adquisiciones?.Email || "prueba@alo.cl"; 
+    }
 
-    // Rellenamos el RUT por comodidad, pero NO hacemos la búsqueda automática
-    if (rutParam) {
-      if (rutParam.toUpperCase().startsWith('C')) rutParam = rutParam.substring(1);
-      document.getElementById('rutInput').value = rutParam;
+    if (storedRut) {
+      let rutLimpio = storedRut.replace(/[^0-9Kk]/g, '');
+      if (rutLimpio.toUpperCase().startsWith('C')) rutLimpio = rutLimpio.substring(1);
+      
+      const inputRut = document.getElementById('rutInput');
+      inputRut.value = rutLimpio;
+      checkRut(inputRut); 
     }
   };
 
@@ -97,9 +107,9 @@
   async function buscar() {
     var rutVisual = document.getElementById('rutInput').value;
     
-    if(rutVisual.length < 3) { 
-      Swal.fire('RUT Incompleto', 'Ingrese un RUT válido', 'warning'); 
-      return; 
+    if(rutVisual.length < 3) {
+        Swal.fire('RUT Incompleto', 'Por favor, ingrese un RUT.', 'warning');
+        return;
     }
     
     var rutParaSap = "C" + rutVisual;
@@ -130,7 +140,7 @@
     } catch(err) {
         document.getElementById('btnBuscar').disabled = false;
         document.getElementById('loading').classList.add('hidden');
-        Swal.fire('Error', 'Fallo de conexión con el servidor.', 'error');
+        Swal.fire('Error', 'Fallo de conexión con el servidor n8n.', 'error');
     }
   }
 
@@ -266,6 +276,7 @@
       showCancelButton: true,
       confirmButtonColor: '#d32f2f',
       confirmButtonText: 'Enviar Solicitud',
+      cancelButtonText: 'Cancelar',
       focusConfirm: false,
       preConfirm: () => {
         const comentario = document.getElementById('swal-comentario').value.trim();
@@ -289,7 +300,7 @@
     }).then((result) => {
       if (result.isConfirmed) {
         var payload = {
-          rut: "C" + document.getElementById('rutInput').value,
+          rut: "C" + document.getElementById('rutInput').value.replace(/[^0-9Kk]/g, ""),
           email: emailUsuarioGlobal, 
           contrato: datosEquipo.contrato,
           docEntry: datosEquipo.docEntry,
@@ -312,7 +323,7 @@
     });
   }
 
-  // --- LLAMADA A N8N PARA ENVIAR LA SOLICITUD ---
+  // --- LLAMADA A N8N Y PANTALLA DE ÉXITO FINAL ---
   async function enviarAlServidor(payload) {
     Swal.fire({ title: 'Enviando a SAP...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
     
@@ -326,17 +337,27 @@
         const data = await response.json();
         
         if(data.success) {
-             Swal.fire({ 
-                 title: '¡Listo!', 
-                 text: 'Solicitud procesada correctamente. Lo redirigiremos al inicio.', 
-                 icon: 'success', 
-                 confirmButtonColor: '#d32f2f' 
-             }).then(() => { 
-                 // Limpiamos la sesión por seguridad
-                 sessionStorage.clear();
-                 // Redirigimos al inicio
-                 window.location.href = 'index.html'; 
-             }); 
+            Swal.close();
+            
+            // Limpiamos sesión
+            sessionStorage.clear();
+            
+            // Reemplazamos pantalla con mensaje gigante (Estilo Bootstrap)
+            document.getElementById('main-container').innerHTML = `
+                <div class="card text-center p-5 mt-5 shadow-sm" style="border-radius: 10px;">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                    <h3 class="text-success fw-bold mt-3">¡Gracias!</h3>
+                    <p class="fs-5 mt-2">Su solicitud ha sido ingresada exitosamente en nuestros sistemas.</p>
+                    <p class="text-muted">Lo estamos redirigiendo a la página principal...</p>
+                    <div class="spinner-border text-danger mx-auto mt-4" style="width: 3rem; height: 3rem;" role="status"></div>
+                </div>
+            `;
+            
+            // Redirigimos al inicio después de 4 segundos
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 4000);
+            
         } else {
              Swal.fire('Error', data.message || 'Error al procesar en SAP', 'error');
         }
@@ -345,3 +366,6 @@
         Swal.fire('Error', 'Fallo de conexión al enviar la solicitud a n8n.', 'error');
     }
   }
+</script>
+</body>
+</html>
