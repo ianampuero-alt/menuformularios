@@ -28,7 +28,6 @@
         box-shadow: 0 1px 0 0 #f44336;
       }
 
-      /* Estilo extra para separar los botones */
       .btn-container {
         display: flex;
         gap: 10px;
@@ -192,10 +191,9 @@
         const parsedData = JSON.parse(storedData);
         fillForm(parsedData);
 
-        // Lógica del botón VOLVER ATRÁS
+        // MODIFICADO: Ahora vuelve al menú de cliente
         document.getElementById('btnBack').addEventListener('click', function() {
-            sessionStorage.clear(); // Limpiamos todo
-            window.location.href = 'index.html'; // Volvemos al inicio
+            window.location.href = 'menucliente.html';
         });
 
         ALL_CONTACT_FIELDS.forEach(fieldId => {
@@ -210,26 +208,22 @@
       function fillForm(data) {
         document.getElementById('RazonSocial').value = data.CardName || '';
         document.getElementById('Industria').value = data.Industria || '';
-        
         if (data.Direccion) {
             document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
             document.getElementById('Comuna').value = data.Direccion.Comuna || '';
             document.getElementById('Region').value = data.Direccion.Region || '';
         }
-        
         if (data.Contactos && data.Contactos.Adquisiciones) {
             document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
             document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
             document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
             document.getElementById('FonoAdq').value = data.Contactos.Adquisiciones.Fono || '';
         }
-
         if (data.Contactos && data.Contactos.PagoProveedores) {
             document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
             document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
             document.getElementById('FonoPago').value = data.Contactos.PagoProveedores.Fono || '';
         }
-        
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
         validarCampos(); 
@@ -241,18 +235,13 @@
             if (!input) return;
             const value = input.value ? input.value.trim() : '';
             const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
-            
             if (value === '') {
-                container.classList.remove('valid'); 
-                container.classList.add('invalid'); 
-                return; 
+                container.classList.remove('valid'); container.classList.add('invalid'); return; 
             }
-            
             let isFormatValid = true;
             if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
             if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
             if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
-
             if (!isFormatValid) {
                 container.classList.remove('valid'); container.classList.add('invalid');
             } else {
@@ -266,28 +255,20 @@
         const formData = new FormData(event.target);
         const dataObject = {};
         formData.forEach((value, key) => { dataObject[key] = value.trim(); });
-        
         const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
         dataObject.CardCode = storedData.CardCode;
-       
         let isValid = true;
         validarCampos(); 
-
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
-            if (dataObject[fieldId] === '' || container.classList.contains('invalid')) {
-                isValid = false;
-            }
+            if (dataObject[fieldId] === '' || container.classList.contains('invalid')) isValid = false;
         });
-
         if (!isValid) {
-            M.toast({html: '❌ Por favor, complete correctamente todos los campos obligatorios.', classes: 'red darken-1'});
+            M.toast({html: '❌ Revise los campos obligatorios.', classes: 'red darken-1'});
             return;
         }
-
-        showLoader("Guardando y enviando a SAP...");
-
+        showLoader("Enviando a SAP...");
         try {
             const response = await fetch(WEBHOOK_UPDATE_BP, {
                 method: 'POST',
@@ -296,20 +277,20 @@
             });
             const result = await response.json();
             hideLoader();
-            
             if (response.ok && result.success) {
-                M.toast({html: '✅ ' + result.message, classes: 'green darken-1'});
-                sessionStorage.clear();
+                M.toast({html: '✅ Actualizado exitosamente', classes: 'green darken-1'});
                 document.querySelector('.container').innerHTML = `
-                    <div class="card-panel center-align" style="margin-top: 50px; padding: 40px; border-radius: 10px;">
-                        <h4 class="green-text text-darken-2">¡Gracias!</h4>
-                        <p style="font-size: 1.2rem;">Sus datos han sido actualizados exitosamente.</p>
-                        <div class="progress" style="width: 50%; margin: 20px auto;"><div class="indeterminate"></div></div>
+                    <div class="card-panel center-align" style="margin-top: 50px; padding: 40px;">
+                        <h4 class="green-text">¡Éxito!</h4>
+                        <p>Datos actualizados correctamente.</p>
+                        <p class="grey-text">Redirigiendo al menú...</p>
+                        <div class="progress"><div class="indeterminate"></div></div>
                     </div>
                 `;
-                setTimeout(() => { window.top.location.href = "https://alorental.cl/clientes1/"; }, 4000);
+                // MODIFICADO: Ahora redirige al menú tras el éxito
+                setTimeout(() => { window.location.href = "menucliente.html"; }, 4000);
             } else {
-                M.toast({html: result.message || '❌ Error al actualizar.', classes: 'red darken-1'});
+                M.toast({html: result.message || '❌ Error.', classes: 'red darken-1'});
             }
         } catch(e) {
             hideLoader();
