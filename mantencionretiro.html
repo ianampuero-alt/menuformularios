@@ -206,7 +206,7 @@
         contrato: contratoInfo.DocNum,
         docEntry: contratoInfo.DocEntry,
         cardName: contratoInfo.U_CardName || "",
-        vendedor: contratoInfo.U_Vendedor || "1",
+        vendedor: Number(contratoInfo.U_Vendedor || 1),
         equipoCode: codigo,
         equipoNombre: nombre,
         numInterno: numInterno,
