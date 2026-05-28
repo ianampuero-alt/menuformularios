@@ -62,16 +62,21 @@
                     <label for="RazonSocial" class="active">Razón Social</label>
                   </div>
                 </div>
+                
                 <div class="row">
                   <div class="input-field col s12">
                     <select id="Industria" name="Industria" required>
                       <option value="" disabled selected>Seleccione una industria</option>
                       <option value="Construcción">Construcción</option>
                       <option value="Minería">Minería</option>
-                      <option value="Agrícola">Agrícola</option>
-                      <option value="Industrial">Industrial</option>
-                      <option value="Comercio">Comercio</option>
-                      <option value="Servicios">Servicios</option>
+                      <option value="Servicios de ingeniería">Servicios de ingeniería</option>
+                      <option value="Transporte, logística y almacenamiento">Transporte, logística y almacenamiento</option>
+                      <option value="Comercio de maquinaria">Comercio de maquinaria</option>
+                      <option value="Soluciones tecnológicas">Soluciones tecnológicas</option>
+                      <option value="Agrícola y forestal">Agrícola y forestal</option>
+                      <option value="Comercio general">Comercio general</option>
+                      <option value="Energía">Energía</option>
+                      <option value="Sector público">Sector público</option>
                       <option value="Otros">Otros</option>
                     </select>
                     <label>Industria</label>
@@ -191,7 +196,6 @@
         const parsedData = JSON.parse(storedData);
         fillForm(parsedData);
 
-        // MODIFICADO: Ahora vuelve al menú de cliente
         document.getElementById('btnBack').addEventListener('click', function() {
             window.location.href = 'menucliente.html';
         });
@@ -287,7 +291,6 @@
                         <div class="progress"><div class="indeterminate"></div></div>
                     </div>
                 `;
-                // MODIFICADO: Ahora redirige al menú tras el éxito
                 setTimeout(() => { window.location.href = "menucliente.html"; }, 4000);
             } else {
                 M.toast({html: result.message || '❌ Error.', classes: 'red darken-1'});
@@ -316,7 +319,7 @@
         return S ? S - 1 : 'k';
       }
       function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-      function isValidPhone(phone) { return /^(\+?56)?(9\d{8}|[2-8]\d{7})$/.test(phone ? phone.trim() : ''); }
+      function isValidPhone(phone) { return /^(\+?56)?(9\\d{8}|[2-8]\\d{7})$/.test(phone ? phone.trim() : ''); }
     </script>
   </body>
 </html>
