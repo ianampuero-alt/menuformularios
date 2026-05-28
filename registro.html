@@ -75,6 +75,13 @@
             <div class="contact-section grid">
                 <div class="input-field"><input id="C1_FirstName" type="text" name="C1_FirstName" required><label for="C1_FirstName">Nombres</label></div>
                 <div class="input-field"><input id="C1_LastName" type="text" name="C1_LastName" required><label for="C1_LastName">Apellidos</label></div>
+                
+                <div class="input-field">
+                    <input id="C1_Rut" type="text" name="C1_Rut" required placeholder="12345678-9">
+                    <label for="C1_Rut">RUT del Firmante</label>
+                    <span id="c1-rut-error" class="helper-text red-text"></span>
+                </div>
+                
                 <div class="input-field"><input id="C1_Email" type="email" name="C1_Email" required><label for="C1_Email">Correo Electrónico</label></div>
                 <div class="input-field"><input id="C1_Pager" type="text" name="C1_Pager" required><label for="C1_Pager">Teléfono</label></div>
             </div>
@@ -140,6 +147,7 @@
         M.FormSelect.init(comunaSelect);
     });
 
+    // ALGORITMO MÓDULO 11
     function validarRutChileno(rut) {
         let valor = rut.replace(/\./g, '').replace('-', '').trim();
         if (valor.length < 2) return false;
@@ -164,34 +172,39 @@
         return dvEsperado.toString() === dv;
     }
 
+    // FORMATEADORES DINÁMICOS
     const rutInput = document.getElementById('FederalTaxID');
     const rutErrorSpan = document.getElementById('rut-error');
+    const firmanteRutInput = document.getElementById('C1_Rut');
+    const firmanteRutErrorSpan = document.getElementById('c1-rut-error');
 
-    rutInput.addEventListener('blur', function() {
-        let limpio = this.value.replace(/\./g, '').replace('-', '').trim();
+    function formatearYValidar(input, errorSpan) {
+        let limpio = input.value.replace(/\./g, '').replace('-', '').trim();
         if(limpio.length > 1) {
             let cuerpo = limpio.slice(0, -1);
             let dv = limpio.slice(-1).toUpperCase();
-            this.value = cuerpo + '-' + dv;
+            input.value = cuerpo + '-' + dv;
         }
-        
-        if (!validarRutChileno(this.value) && limpio !== "") {
-            rutErrorSpan.textContent = '❌ El RUT ingresado es inválido o falso.';
-            this.classList.add('invalid');
+        if (!validarRutChileno(input.value) && limpio !== "") {
+            errorSpan.textContent = '❌ RUT inválido o falso.';
+            input.classList.add('invalid');
         } else {
-            rutErrorSpan.textContent = '';
-            this.classList.remove('invalid');
+            errorSpan.textContent = '';
+            input.classList.remove('invalid');
         }
-    });
+    }
+
+    rutInput.addEventListener('blur', function() { formatearYValidar(this, rutErrorSpan); });
+    firmanteRutInput.addEventListener('blur', function() { formatearYValidar(this, firmanteRutErrorSpan); });
 
     const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        if (!validarRutChileno(rutInput.value)) {
-            M.toast({html: '❌ Corrija el RUT antes de enviar la solicitud.', classes: 'red darken-1'});
-            rutInput.focus();
+        // Validar ambos RUTs estrictamente antes de gatillar n8n
+        if (!validarRutChileno(rutInput.value) || !validarRutChileno(firmanteRutInput.value)) {
+            M.toast({html: '❌ Corrija los RUTs inválidos antes de enviar.', classes: 'red darken-1'});
             return;
         }
 
@@ -202,7 +215,6 @@
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
 
-        // Eliminamos la sobreescritura automática, ahora viaja lo que el cliente escribe en "Ciudad"
         const regionMap = {
             'Región de Arica y Parinacota': '15', 'Región de Tarapacá': '1', 'Región de Antofagasta': '2',
             'Región de Atacama': '3', 'Región de Coquimbo': '4', 'Región de Valparaíso': '5',
@@ -228,16 +240,14 @@
                 document.getElementById('registro-form').classList.add('hide');
                 document.getElementById('success-message').classList.remove('hide');
 
-                setTimeout(() => {
-                    window.location.href = 'https://alorental.cl/';
-                }, 3000);
+                setTimeout(() => { window.location.href = 'https://alorental.cl/'; }, 3000);
             } else {
                 throw new Error('Error en el servidor');
             }
         } catch (error) {
             btnEnviar.removeAttribute('disabled');
             btnEnviar.innerText = 'Enviar Solicitud de Creación';
-            M.toast({html: '❌ Error al enviar la solicitud. Intente nuevamente.', classes: 'red darken-1'});
+            M.toast({html: '❌ Error al enviar la solicitud.', classes: 'red darken-1'});
         }
     });
 </script>
