@@ -67,7 +67,23 @@
                     <label for="BillToState">Región</label>
                 </div>
 
-                <div class="input-field"><input id="U_NXGiro" type="text" name="U_NXGiro" required><label for="U_NXGiro">Giro Comercial</label></div>
+                <div class="input-field">
+                    <select id="Industria" name="Industria" required>
+                        <option value="" disabled selected>Seleccione una Industria</option>
+                        <option value="Construcción">Construcción</option>
+                        <option value="Minería">Minería</option>
+                        <option value="Servicios de ingeniería">Servicios de ingeniería</option>
+                        <option value="Transporte, logística y almacenamiento">Transporte, logística y almacenamiento</option>
+                        <option value="Comercio de maquinaria">Comercio de maquinaria</option>
+                        <option value="Soluciones tecnológicas">Soluciones tecnológicas</option>
+                        <option value="Agrícola y forestal">Agrícola y forestal</option>
+                        <option value="Comercio general">Comercio general</option>
+                        <option value="Energía">Energía</option>
+                        <option value="Sector público">Sector público</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                    <label for="Industria">Industria / Giro</label>
+                </div>
                 <div class="input-field"><input id="EmailAddress" type="email" name="EmailAddress" required><label for="EmailAddress">Correo Electrónico General</label></div>
             </div>
 
@@ -75,13 +91,11 @@
             <div class="contact-section grid">
                 <div class="input-field"><input id="C1_FirstName" type="text" name="C1_FirstName" required><label for="C1_FirstName">Nombres</label></div>
                 <div class="input-field"><input id="C1_LastName" type="text" name="C1_LastName" required><label for="C1_LastName">Apellidos</label></div>
-                
                 <div class="input-field">
                     <input id="C1_Rut" type="text" name="C1_Rut" required placeholder="12345678-9">
                     <label for="C1_Rut">RUT del Firmante</label>
                     <span id="c1-rut-error" class="helper-text red-text"></span>
                 </div>
-                
                 <div class="input-field"><input id="C1_Email" type="email" name="C1_Email" required><label for="C1_Email">Correo Electrónico</label></div>
                 <div class="input-field"><input id="C1_Pager" type="text" name="C1_Pager" required><label for="C1_Pager">Teléfono</label></div>
             </div>
@@ -147,7 +161,6 @@
         M.FormSelect.init(comunaSelect);
     });
 
-    // ALGORITMO MÓDULO 11
     function validarRutChileno(rut) {
         let valor = rut.replace(/\./g, '').replace('-', '').trim();
         if (valor.length < 2) return false;
@@ -172,7 +185,6 @@
         return dvEsperado.toString() === dv;
     }
 
-    // FORMATEADORES DINÁMICOS
     const rutInput = document.getElementById('FederalTaxID');
     const rutErrorSpan = document.getElementById('rut-error');
     const firmanteRutInput = document.getElementById('C1_Rut');
@@ -197,12 +209,11 @@
     rutInput.addEventListener('blur', function() { formatearYValidar(this, rutErrorSpan); });
     firmanteRutInput.addEventListener('blur', function() { formatearYValidar(this, firmanteRutErrorSpan); });
 
-    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/registerBP';
+    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Validar ambos RUTs estrictamente antes de gatillar n8n
         if (!validarRutChileno(rutInput.value) || !validarRutChileno(firmanteRutInput.value)) {
             M.toast({html: '❌ Corrija los RUTs inválidos antes de enviar.', classes: 'red darken-1'});
             return;
