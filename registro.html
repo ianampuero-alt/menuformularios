@@ -197,7 +197,7 @@
     rutInput.addEventListener('blur', function() { formatearYValidar(this, rutErrorSpan); });
     firmanteRutInput.addEventListener('blur', function() { formatearYValidar(this, firmanteRutErrorSpan); });
 
-    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
+    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
