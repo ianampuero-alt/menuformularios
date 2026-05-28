@@ -319,7 +319,12 @@
         return S ? S - 1 : 'k';
       }
       function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-      function isValidPhone(phone) { return /^(\+?56)?(9\\d{8}|[2-8]\\d{7})$/.test(phone ? phone.trim() : ''); }
+      function isValidPhone(phone) {
+      if (!phone) return false;
+      const limpio = phone.trim().replace(/[\s\-()]/g, '');
+  
+      return /^(\+?56)?(9\d{8}|[2-8]\d{7})$/.test(limpio);
+      }
     </script>
   </body>
 </html>
