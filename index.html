@@ -17,6 +17,12 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-message { display: flex; align-items: center; justify-content: center; font-size: 1.2em; color: #555; margin-top: 20px; }
         .hide { display: none !important; }
+        /* Estilo personalizado para el separador del nuevo botón */
+        .register-redirect-container {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
     </style>
 </head>
 <body>
@@ -39,9 +45,16 @@
                             <label for="email">Correo electrónico de contacto</label>
                             <span id="email-error" class="helper-text red-text"></span>
                         </div>
-                        <button type="submit" id="submit-validation-button" class="btn waves-effect waves-light">Enviar Código</button>
+                        <button type="submit" id="submit-validation-button" class="btn waves-effect waves-light w-100" style="width: 100%;">Enviar Código</button>
                     </form>
-                </div>
+
+                    <div class="center-align register-redirect-container">
+                        <p style="color: #757575; margin-bottom: 8px; font-size: 0.95rem;">¿Tu empresa aún no está registrada en ALO Group?</p>
+                        <a href="registro.html" class="btn-flat waves-effect waves-orange orange-text text-darken-4" style="font-weight: bold;">
+                            ¿Cliente Nuevo? Solicitar Alta de Cliente
+                        </a>
+                    </div>
+                    </div>
 
                 <div id="otp-form-container" class="hide">
                     <form id="otp-form">
@@ -51,7 +64,7 @@
                             <label for="otp">Ingrese el código de 6 dígitos</label>
                             <span id="otp-error" class="helper-text red-text"></span>
                         </div>
-                        <button type="submit" id="submit-otp-button" class="btn waves-effect waves-light">Validar Código</button>
+                        <button type="submit" id="submit-otp-button" class="btn waves-effect waves-light" style="width: 100%;">Validar Código</button>
                     </form>
                 </div>
 
@@ -171,7 +184,6 @@
                 sessionStorage.setItem('sapClientData', JSON.stringify(result.data));
                 sessionStorage.setItem('sapRut', userRutGlobal);
                 
-                // 👇 ESTE ES EL CAMBIO PRINCIPAL: Redirección al Menú 👇
                 setTimeout(() => { window.location.href = 'menucliente.html'; }, 1000);
                 
             } else {
@@ -186,4 +198,4 @@
     function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 </script>
 </body>
-</html> 
+</html>
