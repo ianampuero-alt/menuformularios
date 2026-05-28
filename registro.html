@@ -59,6 +59,7 @@
         <div id="success-message" class="center-align hide">
             <h5 style="color: #4CAF50; border: none;">¡Solicitud Enviada con Éxito!</h5>
             <p>Su requerimiento pasará a un proceso de validación interna. Nos pondremos en contacto pronto.</p>
+            <p style="color: #757575; font-size: 0.9rem; margin-top: 15px;">Redirigiendo a alorental.cl...</p>
         </div>
     </div>
 </div>
@@ -66,7 +67,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
     // URL de producción de tu webhook de n8n para registrar el BP
-    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
+    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP'; // Recuerda verificar si es /webhook o /webhook-test
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -75,7 +76,6 @@
         btnEnviar.setAttribute('disabled', 'disabled');
         btnEnviar.innerText = 'Enviando solicitud...';
 
-        // Recopilamos todos los datos del formulario automáticamente
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
 
@@ -90,6 +90,13 @@
                 M.toast({html: '✅ Solicitud enviada correctamente.', classes: 'green darken-1'});
                 document.getElementById('registro-form').classList.add('hide');
                 document.getElementById('success-message').classList.remove('hide');
+
+                // 👇 NUEVA REDIRECCIÓN AUTOMÁTICA 👇
+                setTimeout(() => {
+                    window.location.href = 'https://alorental.cl/';
+                }, 3000); // 3000 milisegundos = 3 segundos de espera
+                // 👆 FIN DE LA REDIRECCIÓN 👆
+
             } else {
                 throw new Error('Error en el servidor');
             }
