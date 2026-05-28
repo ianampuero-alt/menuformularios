@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Nuevo Cliente (BP) - SAP</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 800px; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: auto; }
+        h2, h3 { color: #333; border-bottom: 2px solid #0056b3; padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="text"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-submit { background-color: #0056b3; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px;}
+        .btn-submit:hover { background-color: #004494; }
+        .contact-section { background: #f9f9f9; padding: 15px; border-left: 4px solid #0056b3; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Solicitud de Creación de Cliente (Business Partner)</h2>
+    <form action="URL_DE_TU_WEBHOOK_N8N" method="POST">
+        
+        <h3>Datos de la Empresa</h3>
+        <div class="grid">
+            <div class="form-group"><label>Nombre / Razón Social (CardName)</label><input type="text" name="CardName" required></div>
+            <div class="form-group"><label>RUT / Tax ID (FederalTaxID)</label><input type="text" name="FederalTaxID" required></div>
+            <div class="form-group"><label>Dirección (Address)</label><input type="text" name="Address" required></div>
+            <div class="form-group"><label>Ciudad (City)</label><input type="text" name="City" required></div>
+            <div class="form-group"><label>Comuna/Condado (County)</label><input type="text" name="County" required></div>
+            <div class="form-group"><label>Región/Estado (BillToState)</label><input type="text" name="BillToState" required></div>
+            <div class="form-group"><label>Giro Comercial (U_NXGiro)</label><input type="text" name="U_NXGiro" required></div>
+            <div class="form-group"><label>Correo Electrónico General</label><input type="email" name="EmailAddress" required></div>
+        </div>
+        <div class="form-group">
+            <label>Notas Adicionales</label>
+            <input type="text" name="Notes">
+        </div>
+
+        <h3>Contacto 1: Firmante o Representante Legal (RRLL)</h3>
+        <div class="contact-section grid">
+            <div class="form-group"><label>Nombres</label><input type="text" name="C1_FirstName" required></div>
+            <div class="form-group"><label>Apellidos</label><input type="text" name="C1_LastName" required></div>
+            <div class="form-group"><label>Correo Electrónico</label><input type="email" name="C1_Email" required></div>
+            <div class="form-group"><label>Teléfono (Pager)</label><input type="text" name="C1_Pager" required></div>
+        </div>
+
+        <h3>Contacto 2: Pago a Proveedores</h3>
+        <div class="contact-section grid">
+            <div class="form-group"><label>Nombres</label><input type="text" name="C2_FirstName" required></div>
+            <div class="form-group"><label>Apellidos</label><input type="text" name="C2_LastName" required></div>
+            <div class="form-group"><label>Correo Electrónico</label><input type="email" name="C2_Email" required></div>
+            <div class="form-group"><label>Teléfono (Pager)</label><input type="text" name="C2_Pager" required></div>
+        </div>
+
+        <button type="submit" class="btn-submit">Enviar Solicitud de Creación</button>
+    </form>
+</div>
+
+</body>
+</html>
