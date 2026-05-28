@@ -4,60 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitud de Nuevo Cliente (BP) - SAP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 800px; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin: auto; }
-        h2, h3 { color: #333; border-bottom: 2px solid #0056b3; padding-bottom: 5px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input[type="text"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        body { background-color: #f5f5f5; padding: 20px; }
+        .container { max-width: 800px; margin-top: 30px; }
+        .card-panel { padding: 30px; border-radius: 8px; }
+        h4, h5 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; margin-top: 30px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .btn-submit { background-color: #0056b3; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px;}
-        .btn-submit:hover { background-color: #004494; }
-        .contact-section { background: #f9f9f9; padding: 15px; border-left: 4px solid #0056b3; margin-bottom: 20px; }
+        .contact-section { background: #fafafa; padding: 20px; border-left: 4px solid #0056b3; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
+        .btn-submit { width: 100%; margin-top: 20px; background-color: #0056b3 !important; }
+        .hide { display: none !important; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Solicitud de Creación de Cliente (Business Partner)</h2>
-    <form action="URL_DE_TU_WEBHOOK_N8N" method="POST">
+    <div class="card-panel grey lighten-5 z-depth-1">
+        <h4 class="center-align" style="border: none; margin-top: 0;">Solicitud de Creación de Cliente</h4>
         
-        <h3>Datos de la Empresa</h3>
-        <div class="grid">
-            <div class="form-group"><label>Nombre / Razón Social (CardName)</label><input type="text" name="CardName" required></div>
-            <div class="form-group"><label>RUT / Tax ID (FederalTaxID)</label><input type="text" name="FederalTaxID" required></div>
-            <div class="form-group"><label>Dirección (Address)</label><input type="text" name="Address" required></div>
-            <div class="form-group"><label>Ciudad (City)</label><input type="text" name="City" required></div>
-            <div class="form-group"><label>Comuna/Condado (County)</label><input type="text" name="County" required></div>
-            <div class="form-group"><label>Región/Estado (BillToState)</label><input type="text" name="BillToState" required></div>
-            <div class="form-group"><label>Giro Comercial (U_NXGiro)</label><input type="text" name="U_NXGiro" required></div>
-            <div class="form-group"><label>Correo Electrónico General</label><input type="email" name="EmailAddress" required></div>
-        </div>
-        <div class="form-group">
-            <label>Notas Adicionales</label>
-            <input type="text" name="Notes">
-        </div>
+        <form id="registro-form">
+            
+            <h5>Datos de la Empresa</h5>
+            <div class="grid">
+                <div class="input-field"><input id="CardName" type="text" name="CardName" required><label for="CardName">Nombre Razón Social</label></div>
+                <div class="input-field"><input id="FederalTaxID" type="text" name="FederalTaxID" required><label for="FederalTaxID">RUT</label></div>
+                <div class="input-field"><input id="Address" type="text" name="Address" required><label for="Address">Dirección</label></div>
+                <div class="input-field"><input id="City" type="text" name="City" required><label for="City">Ciudad</label></div>
+                <div class="input-field"><input id="County" type="text" name="County" required><label for="County">Comuna</label></div>
+                <div class="input-field"><input id="BillToState" type="text" name="BillToState" required><label for="BillToState">Región</label></div>
+                <div class="input-field"><input id="U_NXGiro" type="text" name="U_NXGiro" required><label for="U_NXGiro">Giro Comercial</label></div>
+                <div class="input-field"><input id="EmailAddress" type="email" name="EmailAddress" required><label for="EmailAddress">Correo Electrónico General</label></div>
+            </div>
 
-        <h3>Contacto 1: Firmante o Representante Legal (RRLL)</h3>
-        <div class="contact-section grid">
-            <div class="form-group"><label>Nombres</label><input type="text" name="C1_FirstName" required></div>
-            <div class="form-group"><label>Apellidos</label><input type="text" name="C1_LastName" required></div>
-            <div class="form-group"><label>Correo Electrónico</label><input type="email" name="C1_Email" required></div>
-            <div class="form-group"><label>Teléfono (Pager)</label><input type="text" name="C1_Pager" required></div>
-        </div>
+            <h5>Contacto 1: Firmante o Representante Legal (RRLL)</h5>
+            <div class="contact-section grid">
+                <div class="input-field"><input id="C1_FirstName" type="text" name="C1_FirstName" required><label for="C1_FirstName">Nombres</label></div>
+                <div class="input-field"><input id="C1_LastName" type="text" name="C1_LastName" required><label for="C1_LastName">Apellidos</label></div>
+                <div class="input-field"><input id="C1_Email" type="email" name="C1_Email" required><label for="C1_Email">Correo Electrónico</label></div>
+                <div class="input-field"><input id="C1_Pager" type="text" name="C1_Pager" required><label for="C1_Pager">Teléfono</label></div>
+            </div>
 
-        <h3>Contacto 2: Pago a Proveedores</h3>
-        <div class="contact-section grid">
-            <div class="form-group"><label>Nombres</label><input type="text" name="C2_FirstName" required></div>
-            <div class="form-group"><label>Apellidos</label><input type="text" name="C2_LastName" required></div>
-            <div class="form-group"><label>Correo Electrónico</label><input type="email" name="C2_Email" required></div>
-            <div class="form-group"><label>Teléfono (Pager)</label><input type="text" name="C2_Pager" required></div>
-        </div>
+            <h5>Contacto 2: Pago a Proveedores</h5>
+            <div class="contact-section grid">
+                <div class="input-field"><input id="C2_FirstName" type="text" name="C2_FirstName" required><label for="C2_FirstName">Nombres</label></div>
+                <div class="input-field"><input id="C2_LastName" type="text" name="C2_LastName" required><label for="C2_LastName">Apellidos</label></div>
+                <div class="input-field"><input id="C2_Email" type="email" name="C2_Email" required><label for="C2_Email">Correo Electrónico</label></div>
+                <div class="input-field"><input id="C2_Pager" type="text" name="C2_Pager" required><label for="C2_Pager">Teléfono</label></div>
+            </div>
 
-        <button type="submit" class="btn-submit">Enviar Solicitud de Creación</button>
-    </form>
+            <button type="submit" id="btn-enviar" class="btn waves-effect waves-light btn-submit">Enviar Solicitud de Creación</button>
+        </form>
+
+        <div id="success-message" class="center-align hide">
+            <h5 style="color: #4CAF50; border: none;">¡Solicitud Enviada con Éxito!</h5>
+            <p>Su requerimiento pasará a un proceso de validación interna. Nos pondremos en contacto pronto.</p>
+        </div>
+    </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script>
+    // URL de producción de tu webhook de n8n para registrar el BP
+    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
+
+    document.getElementById('registro-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btnEnviar = document.getElementById('btn-enviar');
+        btnEnviar.setAttribute('disabled', 'disabled');
+        btnEnviar.innerText = 'Enviando solicitud...';
+
+        // Recopilamos todos los datos del formulario automáticamente
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch(WEBHOOK_REGISTRO_BP, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                M.toast({html: '✅ Solicitud enviada correctamente.', classes: 'green darken-1'});
+                document.getElementById('registro-form').classList.add('hide');
+                document.getElementById('success-message').classList.remove('hide');
+            } else {
+                throw new Error('Error en el servidor');
+            }
+        } catch (error) {
+            btnEnviar.removeAttribute('disabled');
+            btnEnviar.innerText = 'Enviar Solicitud de Creación';
+            M.toast({html: '❌ Error al enviar la solicitud. Intente nuevamente.', classes: 'red darken-1'});
+        }
+    });
+</script>
 </body>
 </html>
