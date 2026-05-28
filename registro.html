@@ -14,6 +14,7 @@
         .contact-section { background: #fafafa; padding: 20px; border-left: 4px solid #0056b3; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
         .btn-submit { width: 100%; margin-top: 20px; background-color: #0056b3 !important; }
         .hide { display: none !important; }
+        .input-field .select-wrapper { width: 100%; }
         @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -32,7 +33,30 @@
                 <div class="input-field"><input id="Address" type="text" name="Address" required><label for="Address">Dirección</label></div>
                 <div class="input-field"><input id="City" type="text" name="City" required><label for="City">Ciudad</label></div>
                 <div class="input-field"><input id="County" type="text" name="County" required><label for="County">Comuna</label></div>
-                <div class="input-field"><input id="BillToState" type="text" name="BillToState" required><label for="BillToState">Región</label></div>
+                
+                <div class="input-field">
+                    <select id="BillToState" name="BillToState" required>
+                        <option value="" disabled selected>Seleccione una Región</option>
+                        <option value="Región Metropolitana de Santiago">Región Metropolitana de Santiago</option>
+                        <option value="Región de Arica y Parinacota">Región de Arica y Parinacota</option>
+                        <option value="Región de Tarapacá">Región de Tarapacá</option>
+                        <option value="Región de Antofagasta">Región de Antofagasta</option>
+                        <option value="Región de Atacama">Región de Atacama</option>
+                        <option value="Región de Coquimbo">Región de Coquimbo</option>
+                        <option value="Región de Valparaíso">Región de Valparaíso</option>
+                        <option value="Región del Libertador Gral. Bernardo O'Higgins">Región del Libertador Gral. Bernardo O'Higgins</option>
+                        <option value="Región del Maule">Región del Maule</option>
+                        <option value="Región del Biobío">Región del Biobío</option>
+                        <option value="Región de La Araucanía">Región de La Araucanía</option>
+                        <option value="Región de Los Ríos">Región de Los Ríos</option>
+                        <option value="Región de Los Lagos">Región de Los Lagos</option>
+                        <option value="Región de Aysén del Gral. Carlos Ibáñez del Campo">Región de Aysén del Gral. Carlos Ibáñez del Campo</option>
+                        <option value="Región de Magallanes y de la Antártica Chilena">Región de Magallanes y de la Antártica Chilena</option>
+                        <option value="Región de Ñuble">Región de Ñuble</option>
+                    </select>
+                    <label for="BillToState">Región</label>
+                </div>
+
                 <div class="input-field"><input id="U_NXGiro" type="text" name="U_NXGiro" required><label for="U_NXGiro">Giro Comercial</label></div>
                 <div class="input-field"><input id="EmailAddress" type="email" name="EmailAddress" required><label for="EmailAddress">Correo Electrónico General</label></div>
             </div>
@@ -66,8 +90,12 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
-    // URL de producción de tu webhook de n8n para registrar el BP
-    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP'; // Recuerda verificar si es /webhook o /webhook-test
+    document.addEventListener('DOMContentLoaded', function() {
+        var elems = document.querySelectorAll('select');
+        M.FormSelect.init(elems);
+    });
+
+    const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -78,6 +106,32 @@
 
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
+
+        // 👇 TU MAPA DE REGIONES INCORPORADO 👇
+        const regionMap = {
+            'Región de Arica y Parinacota': '15',
+            'Región de Tarapacá': '1',
+            'Región de Antofagasta': '2',
+            'Región de Atacama': '3',
+            'Región de Coquimbo': '4',
+            'Región de Valparaíso': '5',
+            "Región del Libertador Gral. Bernardo O'Higgins": '6',
+            'Región del Maule': '7',
+            'Región del Biobío': '8',
+            'Región de La Araucanía': '9',
+            'Región de Los Ríos': '14',
+            'Región de Los Lagos': '10',
+            'Región de Aysén del Gral. Carlos Ibáñez del Campo': '11',
+            'Región de Magallanes y de la Antártica Chilena': '12',
+            'Región Metropolitana de Santiago': '13',
+            'Región de Ñuble': '16'
+        };
+
+        // Si la región existe en el mapa, la transformamos a su ID numérico para SAP
+        if (data.BillToState && regionMap[data.BillToState]) {
+            data.BillToState = regionMap[data.BillToState];
+        }
+        // 👆 FIN DEL MAPEO 👆
 
         try {
             const response = await fetch(WEBHOOK_REGISTRO_BP, {
@@ -91,11 +145,9 @@
                 document.getElementById('registro-form').classList.add('hide');
                 document.getElementById('success-message').classList.remove('hide');
 
-                // 👇 NUEVA REDIRECCIÓN AUTOMÁTICA 👇
                 setTimeout(() => {
                     window.location.href = 'https://alorental.cl/';
-                }, 3000); // 3000 milisegundos = 3 segundos de espera
-                // 👆 FIN DE LA REDIRECCIÓN 👆
+                }, 3000);
 
             } else {
                 throw new Error('Error en el servidor');
