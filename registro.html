@@ -29,10 +29,14 @@
             <h5>Datos de la Empresa</h5>
             <div class="grid">
                 <div class="input-field"><input id="CardName" type="text" name="CardName" required><label for="CardName">Nombre Razón Social</label></div>
-                <div class="input-field"><input id="FederalTaxID" type="text" name="FederalTaxID" required><label for="FederalTaxID">RUT</label></div>
+                
+                <div class="input-field">
+                    <input id="FederalTaxID" type="text" name="FederalTaxID" required placeholder="12345678-9">
+                    <label for="FederalTaxID">RUT de la Empresa</label>
+                    <span id="rut-error" class="helper-text red-text"></span>
+                </div>
+                
                 <div class="input-field"><input id="Address" type="text" name="Address" required><label for="Address">Dirección</label></div>
-                <div class="input-field"><input id="City" type="text" name="City" required><label for="City">Ciudad</label></div>
-                <div class="input-field"><input id="County" type="text" name="County" required><label for="County">Comuna</label></div>
                 
                 <div class="input-field">
                     <select id="BillToState" name="BillToState" required>
@@ -55,6 +59,13 @@
                         <option value="Región de Ñuble">Región de Ñuble</option>
                     </select>
                     <label for="BillToState">Región</label>
+                </div>
+
+                <div class="input-field">
+                    <select id="County" name="County" required>
+                        <option value="" disabled selected>Seleccione primero una región</option>
+                    </select>
+                    <label for="County">Comuna / Condado</label>
                 </div>
 
                 <div class="input-field"><input id="U_NXGiro" type="text" name="U_NXGiro" required><label for="U_NXGiro">Giro Comercial</label></div>
@@ -90,16 +101,109 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
+    // BASE DE DATOS DE COMUNAS POR REGIÓN
+    const ChileData = {
+        "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
+        "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
+        "Región de Tarapacá": ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña", "Colchane", "Huara", "Pica"],
+        "Región de Antofagasta": ["Antofagasta", "Mejillones", "Sierra Gorda", "Taltal", "Calama", "Ollagüe", "San Pedro de Atacama", "Tocopilla", "María Elena"],
+        "Región de Atacama": ["Copiapó", "Caldera", "Tierra Amarilla", "Vallenar", "Alto del Carmen", "Freirina", "Huasco", "Chañaral", "Diego de Almagro"],
+        "Región de Coquimbo": ["La Serena", "Coquimbo", "Andacollo", "La Higuera", "Paiguano", "Vicuña", "Illapel", "Canela", "Los Vilos", "Salamanca", "Ovalle", "Combarbalá", "Monte Patria", "Punitaqui", "Río Hurtado"],
+        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Casablanca", "Concón", "Puchuncaví", "Quintero", "San Antonio", "Algarrobo", "Cartagena", "El Quisco", "El Tabo", "Santo Domingo", "Quillota", "La Calera", "Hijuelas", "La Cruz", "Nogales", "San Felipe", "Catemu", "Llaillay", "Panquehue", "Putaendo", "Santa María", "Los Andes", "Calle Larga", "Rinconada", "San Esteban", "Quilpué", "Villa Alemana", "Limache", "Olmué", "La Ligua", "Cabildo", "Papudo", "Petorca", "Zapallar"],
+        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "Machalí", "Graneros", "Mostazal", "Doñihue", "Coltauco", "Coinco", "Olivar", "Placilla", "Rengo", "Requínoa", "San Vicente", "Pichidegua", "Peumo", "Las Cabras", "San Fernando", "Chimbarongo", "Nancagua", "Peralillo", "Santa Cruz", "Pumanque", "Palmilla", "Litueche", "Navidad", "Pichilemu", "Marchigüe", "La Estrella", "Paredones"],
+        "Región del Maule": ["Talca", "Constitución", "Curepto", "Empedrado", "Maule", "Pelarco", "Pencahue", "Río Claro", "San Clemente", "San Rafael", "Curicó", "Hualañé", "Licantén", "Molina", "Rauco", "Romeral", "Sagrada Familia", "Teno", "Vichuquén", "Linares", "Colbún", "Longaví", "Parral", "Retiro", "San Javier", "Villa Alegre", "Yerbas Buenas", "Cauquenes", "Chanco", "Pelluhue"],
+        "Región de Ñuble": ["Chillán", "Chillán Viejo", "Bulnes", "Cobquecura", "Coelemu", "Coihueco", "El Carmen", "Ninhue", "Ñiquén", "Pemuco", "Pinto", "Portezuelo", "Quillón", "Quirihue", "Ránquil", "San Carlos", "San Fabián", "San Ignacio", "San Nicolás", "Treguaco", "Yungay"],
+        "Región del Biobío": ["Concepción", "Chiguayante", "Coronel", "Florida", "Hualpén", "Hualqui", "Lota", "Penco", "San Pedro de la Paz", "Santa Juana", "Talcahuano", "Tomé", "Los Ángeles", "Antuco", "Cabrero", "Laja", "Mulchén", "Nacimiento", "Negrete", "Quilaco", "Quilleco", "San Rosendo", "Santa Bárbara", "Tucapel", "Yumbel", "Alto Biobío", "Lebu", "Arauco", "Cañete", "Contulmo", "Curanilahue", "Los Álamos", "Tirúa"],
+        "Región de La Araucanía": ["Temuco", "Carahue", "Cunco", "Curarrehue", "Freire", "Galvarino", "Gorbea", "Lautaro", "Loncoche", "Melipeuco", "Nueva Imperial", "Padre Las Casas", "Perquenco", "Pitrufquén", "Pucón", "Saavedra", "Teodoro Schmidt", "Toltén", "Vilcún", "Villarrica", "Cholchol", "Angol", "Collipulli", "Curacautín", "Ercilla", "Lonquimay", "Los Sauces", "Lumaco", "Purén", "Renaico", "Traiguén", "Victoria"],
+        "Región de Los Ríos": ["Valdivia", "Corral", "Lanco", "Los Lagos", "Máfil", "Mariquina", "Paillaco", "Panguipulli", "La Unión", "Futrono", "Lago Ranco", "Río Bueno"],
+        "Región de Los Lagos": ["Puerto Montt", "Calbuco", "Cochamó", "Fresia", "Frutillar", "Los Muermos", "Llanquihue", "Maullín", "Puerto Varas", "Castro", "Ancud", "Chonchi", "Curaco de Vélez", "Dalcahue", "Puqueldón", "Queilén", "Quellón", "Quemchi", "Quinchao", "Osorno", "Puerto Octay", "Purranque", "Puyehue", "Río Negro", "San Juan de la Costa", "San Pablo", "Chaitén", "Futaleufú", "Hualaihué", "Palena"],
+        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Lago Verde", "Aysén", "Cisnes", "Guaitecas", "Cochrane", "O'Higgins", "Tortel", "Chile Chico", "Río Ibáñez"],
+        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Laguna Blanca", "Río Verde", "San Gregorio", "Cabo de Hornos", "Antártica", "Porvenir", "Primavera", "Timaukel", "Natales", "Torres del Paine"]
+    };
+
+    // Inicializaciones de Materialize
     document.addEventListener('DOMContentLoaded', function() {
-        var elems = document.querySelectorAll('select');
-        M.FormSelect.init(elems);
+        M.FormSelect.init(document.querySelectorAll('select'));
     });
 
+    // LÓGICA DE MENÚ DESPLEGABLE DEPENDIENTE
+    const regionSelect = document.getElementById('BillToState');
+    const comunaSelect = document.getElementById('County');
+
+    regionSelect.addEventListener('change', function() {
+        const comunas = ChileData[this.value] || [];
+        comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una Comuna</option>';
+        
+        comunas.forEach(comuna => {
+            let opt = document.createElement('option');
+            opt.value = comuna;
+            opt.textContent = comuna;
+            comunaSelect.appendChild(opt);
+        });
+        
+        // Re-inicializar obligatoriamente para que Materialize redibuje los cambios
+        M.FormSelect.init(comunaSelect);
+    });
+
+    // FUNCIÓN OFICIAL DE VALIDACIÓN DE RUT CHILENO (MODULO 11)
+    function validarRutChileno(rut) {
+        let valor = rut.replace(/\./g, '').replace('-', '').trim();
+        if (valor.length < 2) return false;
+
+        let cuerpo = valor.slice(0, -1);
+        let dv = valor.slice(-1).toUpperCase();
+
+        if (!/^\d+$/.test(cuerpo)) return false;
+
+        let suma = 0;
+        let multiplo = 2;
+
+        for (let i = 1; i <= cuerpo.length; i++) {
+            suma += multiplo * cuerpo.charAt(cuerpo.length - i);
+            if (multiplo < 7) multiplo++; else multiplo = 2;
+        }
+
+        let dvEsperado = 11 - (suma % 11);
+        if (dvEsperado === 11) dvEsperado = '0';
+        else if (dvEsperado === 10) dvEsperado = 'K';
+
+        return dvEsperado.toString() === dv;
+    }
+
+    // Formateador visual e interactivo de RUT mientras escriben
+    const rutInput = document.getElementById('FederalTaxID');
+    const rutErrorSpan = document.getElementById('rut-error');
+
+    rutInput.addEventListener('blur', function() {
+        let limpio = this.value.replace(/\./g, '').replace('-', '').trim();
+        if(limpio.length > 1) {
+            let cuerpo = limpio.slice(0, -1);
+            let dv = limpio.slice(-1).toUpperCase();
+            this.value = cuerpo + '-' + dv; // Aplica formato standard XXXXXXXX-X
+        }
+        
+        if (!validarRutChileno(this.value) && limpio !== "") {
+            rutErrorSpan.textContent = '❌ El RUT ingresado es inválido o falso.';
+            this.classList.add('invalid');
+        } else {
+            rutErrorSpan.textContent = '';
+            this.classList.remove('invalid');
+        }
+    });
+
+    // ENVÍO DE FORMULARIO CON INTERCEPCIÓN DE DATOS
     const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // Verificación estricta del RUT antes de gatillar n8n
+        if (!validarRutChileno(rutInput.value)) {
+            M.toast({html: '❌ Corrija el RUT antes de enviar la solicitud.', classes: 'red darken-1'});
+            rutInput.focus();
+            return;
+        }
+
         const btnEnviar = document.getElementById('btn-enviar');
         btnEnviar.setAttribute('disabled', 'disabled');
         btnEnviar.innerText = 'Enviando solicitud...';
@@ -107,31 +211,21 @@
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
 
-        // 👇 TU MAPA DE REGIONES INCORPORADO 👇
+        // MAPEO CLAVE: Duplicamos la Comuna al parámetro City exigido por tu SAP
+        data.City = data.County;
+
         const regionMap = {
-            'Región de Arica y Parinacota': '15',
-            'Región de Tarapacá': '1',
-            'Región de Antofagasta': '2',
-            'Región de Atacama': '3',
-            'Región de Coquimbo': '4',
-            'Región de Valparaíso': '5',
-            "Región del Libertador Gral. Bernardo O'Higgins": '6',
-            'Región del Maule': '7',
-            'Región del Biobío': '8',
-            'Región de La Araucanía': '9',
-            'Región de Los Ríos': '14',
-            'Región de Los Lagos': '10',
-            'Región de Aysén del Gral. Carlos Ibáñez del Campo': '11',
-            'Región de Magallanes y de la Antártica Chilena': '12',
-            'Región Metropolitana de Santiago': '13',
-            'Región de Ñuble': '16'
+            'Región de Arica y Parinacota': '15', 'Región de Tarapacá': '1', 'Región de Antofagasta': '2',
+            'Región de Atacama': '3', 'Región de Coquimbo': '4', 'Región de Valparaíso': '5',
+            "Región del Libertador Gral. Bernardo O'Higgins": '6', 'Región del Maule': '7', 'Región del Biobío': '8',
+            'Región de La Araucanía': '9', 'Región de Los Ríos': '14', 'Región de Los Lagos': '10',
+            'Región de Aysén del Gral. Carlos Ibáñez del Campo': '11', 'Región de Magallanes y de la Antártica Chilena': '12',
+            'Región Metropolitana de Santiago': '13', 'Región de Ñuble': '16'
         };
 
-        // Si la región existe en el mapa, la transformamos a su ID numérico para SAP
         if (data.BillToState && regionMap[data.BillToState]) {
             data.BillToState = regionMap[data.BillToState];
         }
-        // 👆 FIN DEL MAPEO 👆
 
         try {
             const response = await fetch(WEBHOOK_REGISTRO_BP, {
@@ -148,7 +242,6 @@
                 setTimeout(() => {
                     window.location.href = 'https://alorental.cl/';
                 }, 3000);
-
             } else {
                 throw new Error('Error en el servidor');
             }
