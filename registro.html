@@ -22,14 +22,13 @@
 
 <div class="container">
     <div class="card-panel grey lighten-5 z-depth-1">
-        <h4 class="center-align" style="border: none; margin-top: 0;">Solicitud de Creación de Cliente</h4>
+        <h4 class="center-align" style="border: none; margin-top: 0; color: #0056b3;">Solicitud de Creación de Cliente</h4>
         
         <form id="registro-form">
             
             <h5>Datos de la Empresa</h5>
             <div class="grid">
                 <div class="input-field"><input id="CardName" type="text" name="CardName" required><label for="CardName">Nombre Razón Social</label></div>
-                
                 <div class="input-field">
                     <input id="FederalTaxID" type="text" name="FederalTaxID" required placeholder="12345678-9">
                     <label for="FederalTaxID">RUT de la Empresa</label>
@@ -37,7 +36,14 @@
                 </div>
                 
                 <div class="input-field"><input id="Address" type="text" name="Address" required><label for="Address">Dirección</label></div>
+                <div class="input-field"><input id="City" type="text" name="City" required><label for="City">Ciudad</label></div>
                 
+                <div class="input-field">
+                    <select id="County" name="County" required>
+                        <option value="" disabled selected>Seleccione primero una región</option>
+                    </select>
+                    <label for="County">Comuna / Condado</label>
+                </div>
                 <div class="input-field">
                     <select id="BillToState" name="BillToState" required>
                         <option value="" disabled selected>Seleccione una Región</option>
@@ -59,13 +65,6 @@
                         <option value="Región de Ñuble">Región de Ñuble</option>
                     </select>
                     <label for="BillToState">Región</label>
-                </div>
-
-                <div class="input-field">
-                    <select id="County" name="County" required>
-                        <option value="" disabled selected>Seleccione primero una región</option>
-                    </select>
-                    <label for="County">Comuna / Condado</label>
                 </div>
 
                 <div class="input-field"><input id="U_NXGiro" type="text" name="U_NXGiro" required><label for="U_NXGiro">Giro Comercial</label></div>
@@ -101,7 +100,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
-    // BASE DE DATOS DE COMUNAS POR REGIÓN
     const ChileData = {
         "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
         "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
@@ -121,12 +119,10 @@
         "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Laguna Blanca", "Río Verde", "San Gregorio", "Cabo de Hornos", "Antártica", "Porvenir", "Primavera", "Timaukel", "Natales", "Torres del Paine"]
     };
 
-    // Inicializaciones de Materialize
     document.addEventListener('DOMContentLoaded', function() {
         M.FormSelect.init(document.querySelectorAll('select'));
     });
 
-    // LÓGICA DE MENÚ DESPLEGABLE DEPENDIENTE
     const regionSelect = document.getElementById('BillToState');
     const comunaSelect = document.getElementById('County');
 
@@ -141,11 +137,9 @@
             comunaSelect.appendChild(opt);
         });
         
-        // Re-inicializar obligatoriamente para que Materialize redibuje los cambios
         M.FormSelect.init(comunaSelect);
     });
 
-    // FUNCIÓN OFICIAL DE VALIDACIÓN DE RUT CHILENO (MODULO 11)
     function validarRutChileno(rut) {
         let valor = rut.replace(/\./g, '').replace('-', '').trim();
         if (valor.length < 2) return false;
@@ -170,7 +164,6 @@
         return dvEsperado.toString() === dv;
     }
 
-    // Formateador visual e interactivo de RUT mientras escriben
     const rutInput = document.getElementById('FederalTaxID');
     const rutErrorSpan = document.getElementById('rut-error');
 
@@ -179,7 +172,7 @@
         if(limpio.length > 1) {
             let cuerpo = limpio.slice(0, -1);
             let dv = limpio.slice(-1).toUpperCase();
-            this.value = cuerpo + '-' + dv; // Aplica formato standard XXXXXXXX-X
+            this.value = cuerpo + '-' + dv;
         }
         
         if (!validarRutChileno(this.value) && limpio !== "") {
@@ -191,13 +184,11 @@
         }
     });
 
-    // ENVÍO DE FORMULARIO CON INTERCEPCIÓN DE DATOS
     const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook-test/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Verificación estricta del RUT antes de gatillar n8n
         if (!validarRutChileno(rutInput.value)) {
             M.toast({html: '❌ Corrija el RUT antes de enviar la solicitud.', classes: 'red darken-1'});
             rutInput.focus();
@@ -211,9 +202,7 @@
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
 
-        // MAPEO CLAVE: Duplicamos la Comuna al parámetro City exigido por tu SAP
-        data.City = data.County;
-
+        // Eliminamos la sobreescritura automática, ahora viaja lo que el cliente escribe en "Ciudad"
         const regionMap = {
             'Región de Arica y Parinacota': '15', 'Región de Tarapacá': '1', 'Región de Antofagasta': '2',
             'Región de Atacama': '3', 'Región de Coquimbo': '4', 'Región de Valparaíso': '5',
