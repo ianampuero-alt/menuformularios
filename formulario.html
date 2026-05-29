@@ -47,7 +47,7 @@
       <div class="row">
         <div class="col s12">
           <div class="card-panel grey lighten-5 z-depth-1">
-            <h4 class="center-align" style="color: #0056b3;">Actualización de Datos</h4>
+            <h4 class="center-align" style="color: #0056b3;">Actualización de Datos corporativos</h4>
             <div class="row">
               <form class="col s12" id="myForm">
                 <div class="row">
@@ -254,31 +254,30 @@
 
         document.getElementById('Region').addEventListener('change', function() {
             populateComunasYCiudades(this.value);
-            validarCampos();
+            validarCampos(false); // Validar de forma pasiva al cambiar
         });
 
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             if (input) {
                 const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
-                input.addEventListener(eventType, validarCampos);
+                input.addEventListener(eventType, () => { validarCampos(false); });
             }
         });
 
-        // Formateador dinámico para teléfonos
         ['FonoAdq', 'FonoPago'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('blur', function() {
                 this.value = formatPhoneValue(this.value);
                 M.updateTextFields();
-                validarCampos();
+                validarCampos(false);
             });
         });
       });
 
       function formatPhoneValue(val) {
+        if (!val) return '';
         let clean = val.trim().replace(/[\s\-()]/g, '');
-        if (!clean) return '';
         if (/^9\d{8}$/.test(clean)) return '+56' + clean;
         if (/^569\d{8}$/.test(clean)) return '+' + clean;
         if (clean.startsWith('+56')) return clean;
@@ -316,85 +315,130 @@
 
         document.getElementById('RazonSocial').value = data.CardName || '';
         
-        const indValue = data.Industria || '';
+        // Mapeo adaptivo para Industria (Nativo SAP vs Estructura Custom)
+        const indValue = data.Industry || data.Industria || '';
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
-        if (data.Direccion) {
-            document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
-            
-            const regValue = data.Direccion.Region || '';
-            const regionNombre = regionMapRev[regValue] || regValue;
-            document.getElementById('Region').value = regionNombre;
-            
-            // 🚨 REPARADOR DE INVERSIÓN DE SAP 🚨
-            let comunaSugerida = data.Direccion.Comuna || '';
-            let ciudadSugerida = data.Direccion.Ciudad || '';
-            const comunasDeEstaRegion = ChileData[regionNombre] || [];
-            
-            // Si SAP guardó la comuna en "Ciudad" o la región en "Comuna", los reordenamos inteligentemente
-            if (comunaSugerida.includes('Región') || comunasDeEstaRegion.includes(ciudadSugerida)) {
-                comunaSugerida = ciudadSugerida; 
-                ciudadSugerida = ''; 
-            }
-            
-            populateComunasYCiudades(regionNombre, comunaSugerida, ciudadSugerida);
+        // Mapeo adaptivo para Dirección de SAP
+        const calle = data.Address || (data.Direccion ? data.Direccion.Calle : '') || '';
+        document.getElementById('CalleNumero').value = calle;
+        
+        const regValue = data.BillToState || (data.Direccion ? data.Direccion.Region : '') || '';
+        const regionNombre = regionMapRev[regValue] || regValue;
+        document.getElementById('Region').value = regionNombre;
+        
+        // 🚨 REPARADOR INTELIGENTE DE DATOS INVERTIDOS DE SAP 🚨
+        let comunaSugerida = data.County || (data.Direccion ? data.Direccion.Comuna : '') || '';
+        let ciudadSugerida = data.City || (data.Direccion ? data.Direccion.Ciudad : '') || '';
+        
+        const comunasValidas = ChileData[regionNombre] || [];
+        const ciudadesValidas = ChileCities[regionNombre] || [];
+
+        // Si SAP guardó la comuna en el campo Ciudad, o la región en Comuna, lo reordenamos:
+        if (comunaSugerida.includes('Región') || comunasValidas.includes(ciudadSugerida)) {
+            const comunaReal = comunasValidas.includes(ciudadSugerida) ? ciudadSugerida : (comunasValidas.includes(comunaSugerida) ? comunaSugerida : '');
+            comunaSugerida = comunaReal;
+            ciudadSugerida = ''; // Forzar selección limpia de ciudad para corregir la base de datos
         }
 
-        if (data.Contactos && data.Contactos.Adquisiciones) {
-            document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
-            document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
-            document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
-            document.getElementById('FonoAdq').value = formatPhoneValue(data.Contactos.Adquisiciones.Fono || '');
+        if (ciudadSugerida && !ciudadesValidas.includes(ciudadSugerida)) ciudadSugerida = '';
+        if (comunaSugerida && !comunasValidas.includes(comunaSugerida)) comunaSugerida = '';
+
+        populateComunasYCiudades(regionNombre, comunaSugerida, ciudadSugerida);
+
+        // Mapeo adaptivo para Contactos (Soporta Array OCPR nativo y Nodos Custom)
+        let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
+        let nomPago = '', emailPago = '', fonoPago = '';
+
+        if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
+            const adqCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Firmante o RRLL');
+            if (adqCont) {
+                nomAdq = adqCont.FirstName ? (adqCont.FirstName + ' ' + (adqCont.LastName || '')) : adqCont.Name;
+                rutAdq = adqCont.Pager || ''; emailAdq = adqCont.E_Mail || ''; fonoAdq = adqCont.MobilePhone || '';
+            }
+            const pagoCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Pago Proveedores');
+            if (pagoCont) {
+                nomPago = pagoCont.FirstName ? (pagoCont.FirstName + ' ' + (pagoCont.LastName || '')) : pagoCont.Name;
+                emailPago = pagoCont.E_Mail || ''; fonoPago = pagoCont.MobilePhone || '';
+            }
+        } else if (data.Contactos) {
+            if (data.Contactos.Adquisiciones) {
+                nomAdq = data.Contactos.Adquisiciones.Nombre || ''; rutAdq = data.Contactos.Adquisiciones.Rut || '';
+                emailAdq = data.Contactos.Adquisiciones.Email || ''; fonoAdq = data.Contactos.Adquisiciones.Fono || '';
+            }
+            if (data.Contactos.PagoProveedores) {
+                nomPago = data.Contactos.PagoProveedores.Nombre || ''; emailPago = data.Contactos.PagoProveedores.Email || '';
+                fonoPago = data.Contactos.PagoProveedores.Fono || '';
+            }
         }
-        if (data.Contactos && data.Contactos.PagoProveedores) {
-            document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
-            document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
-            document.getElementById('FonoPago').value = formatPhoneValue(data.Contactos.PagoProveedores.Fono || '');
-        }
+
+        document.getElementById('NombreAdq').value = nomAdq;
+        document.getElementById('RutAdq').value = rutAdq;
+        document.getElementById('EmailAdq').value = emailAdq;
+        document.getElementById('FonoAdq').value = formatPhoneValue(fonoAdq);
+
+        document.getElementById('NombrePago').value = nomPago;
+        document.getElementById('EmailPago').value = emailPago;
+        document.getElementById('FonoPago').value = formatPhoneValue(fonoPago);
+
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(); 
+        validarCampos(true); // Carga pasiva: No pinta rojo al iniciar la página
       }
 
-      function validarCampos() {
+      function validarCampos(isInitialLoad = false) {
+        let formIsValid = true;
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             if (!input) return;
             const value = input.value ? input.value.trim() : '';
             const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+            
+            // Si está vacío al inicio, removemos estados para no asustar con líneas rojas
             if (value === '') {
-                container.classList.remove('valid'); container.classList.add('invalid'); return; 
+                container.classList.remove('valid', 'invalid');
+                formIsValid = false;
+                return; 
             }
+            
             let isFormatValid = true;
             if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
             if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
             if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
+            
             if (!isFormatValid) {
-                container.classList.remove('valid'); container.classList.add('invalid');
+                formIsValid = false;
+                if (!isInitialLoad) { container.classList.remove('valid'); container.classList.add('invalid'); }
             } else {
-                container.classList.remove('invalid'); container.classList.add('valid');
+                if (!isInitialLoad) { container.classList.remove('invalid'); container.classList.add('valid'); }
             }
         });
+        return formIsValid;
       }
 
       document.getElementById('myForm').addEventListener('submit', async function(event) {
         event.preventDefault();
+        
+        // Forzar validación visual estricta en el envío (aquí sí pinta errores)
+        ALL_CONTACT_FIELDS.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if(!input) return;
+            const value = input.value ? input.value.trim() : '';
+            const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+            if(value === '') { container.classList.add('invalid'); }
+        });
+
+        if (!validarCampos(false)) {
+            M.toast({html: '❌ Revise los campos obligatorios o inválidos.', classes: 'red darken-1'});
+            return;
+        }
+
         const formData = new FormData(event.target);
         const dataObject = {};
         formData.forEach((value, key) => { dataObject[key] = value.trim(); });
         const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
         dataObject.CardCode = storedData.CardCode;
-        let isValid = true;
-        validarCampos(); 
-        ALL_CONTACT_FIELDS.forEach(fieldId => {
-            const input = document.getElementById(fieldId);
-            const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
-            if (dataObject[fieldId] === '' || container.classList.contains('invalid')) isValid = false;
-        });
-        if (!isValid) {
-            M.toast({html: '❌ Revise los campos obligatorios.', classes: 'red darken-1'});
-            return;
-        }
+
         showLoader("Enviando a SAP...");
         try {
             const response = await fetch(WEBHOOK_UPDATE_BP, {
@@ -409,7 +453,7 @@
                 document.querySelector('.container').innerHTML = `
                     <div class="card-panel center-align" style="margin-top: 50px; padding: 40px;">
                         <h4 class="green-text">¡Éxito!</h4>
-                        <p>Datos actualizados correctamente.</p>
+                        <p>Datos actualizados correctamente en SAP y ordenados de forma definitiva.</p>
                         <p class="grey-text">Redirigiendo al menú...</p>
                         <div class="progress"><div class="indeterminate"></div></div>
                     </div>
