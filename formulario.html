@@ -313,13 +313,13 @@
         const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
         const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
 
-        document.getElementById('RazonSocial').value = data.CardName || '';
+        document.getElementById('RazonSocial').value = data.CardName || data.RazonSocial || '';
         
-        // 1. TRADUCIR EL CÓDIGO DE INDUSTRIA DE LA RAÍZ DE SAP (Número -> Texto String)
-        const indValue = String(data.Industry || '').trim();
+        // 1. TRADUCIR EL CÓDIGO DE INDUSTRIA DE LA RAÍZ (ej: 2 -> "Minería")
+        const indValue = String(data.Industry || data.Industria || '').trim();
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
-        // 2. EXTRAER UBICACIONES PLANAS DE LA RAÍZ DE SAP
+        // 2. EXTRAER UBICACIONES PLANAS DIRECTAS DE LA RAÍZ
         let calle = data.Address || '';
         let regionRaw = data.BillToState || '';
         let comunaRaw = data.County || '';
@@ -327,7 +327,7 @@
 
         document.getElementById('CalleNumero').value = calle;
         
-        // Traducir código de región
+        // Traducir código de región (ej: "13" -> "Región Metropolitana de Santiago")
         const regionNombre = regionMapRev[String(regionRaw).trim()] || regionRaw;
         document.getElementById('Region').value = regionNombre;
 
@@ -337,11 +337,19 @@
         let comunaFinal = String(comunaRaw).trim();
         let ciudadFinal = String(ciudadRaw).trim();
 
-        // 🚨 ENDEREZADOR AUTOMÁTICO DE DATOS INVERTIDOS DE SAP (Ciudad 🔁 Comuna) 🚨
+        // 🚨 ENDEREZADOR AUTOMÁTICO DE DATOS INVERTIDOS EN SAP (Ciudad 🔁 Comuna) 🚨
         if (comunasValidas.includes(ciudadFinal)) {
             let aux = ciudadFinal;
             ciudadFinal = comunaFinal; 
             comunaFinal = aux;        
+        }
+
+        // Ajustes de seguridad por si no hay coincidencias exactas en la base histórica
+        if (comunaFinal && !comunasValidas.includes(comunaFinal)) {
+            if(comunasValidas.includes(ciudadFinal)) comunaFinal = ciudadFinal;
+        }
+        if (!ciudadesValidas.includes(ciudadFinal)) {
+            ciudadFinal = ciudadesValidas.includes('Santiago') ? 'Santiago' : (ciudadesValidas[0] || '');
         }
 
         // Popular cascada gráfica de Materialize
@@ -351,7 +359,7 @@
         if (ciudadFinal) document.getElementById('City').value = ciudadFinal.trim();
         if (comunaFinal) document.getElementById('Comuna').value = comunaFinal.trim();
 
-        // 3. EXTRAER CONTACTOS (Array OCPR de SAP)
+        // 3. EXTRAER CONTACTOS DESDE LA MATRIZ NATIVA OCPR de SAP
         let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
         let nomPago = '', emailPago = '', fonoPago = '';
 
