@@ -254,7 +254,7 @@
 
         document.getElementById('Region').addEventListener('change', function() {
             populateComunasYCiudades(this.value);
-            validarCampos(true); // Validación pasiva al cambiar
+            validarCampos(true); 
         });
 
         ALL_CONTACT_FIELDS.forEach(fieldId => {
@@ -292,8 +292,8 @@
         comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
         comunas.forEach(comuna => {
             let opt = document.createElement('option');
-            opt.value = comuna; opt.textContent = comuna;
-            if (comuna === comunaSeleccionada) opt.selected = true;
+            opt.value = comuna.trim(); opt.textContent = comuna.trim();
+            if (comuna.trim() === comunaSeleccionada.trim()) opt.selected = true;
             comunaSelect.appendChild(opt);
         });
         M.FormSelect.init(comunaSelect);
@@ -302,56 +302,83 @@
         citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
         ciudades.forEach(ciudad => {
             let opt = document.createElement('option');
-            opt.value = ciudad; opt.textContent = ciudad;
-            if (ciudad === ciudadSeleccionada) opt.selected = true;
+            opt.value = ciudad.trim(); opt.textContent = ciudad.trim();
+            if (ciudad.trim() === ciudadSeleccionada.trim()) opt.selected = true;
             citySelect.appendChild(opt);
         });
         M.FormSelect.init(citySelect);
       }
 
       function fillForm(data) {
-        // TRADUCTORES INVERSOS DE CÓDIGOS DE SAP ➡️ TEXTOS STRING
+        // TRADUCTORES INVERSOS DE CÓDIGOS DE SAP ➡️ TEXTOS EN STRING PARA EL FORMULARIO
         const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
         const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
 
-        document.getElementById('RazonSocial').value = data.CardName || '';
+        document.getElementById('RazonSocial').value = data.CardName || data.RazonSocial || '';
         
-        // 1. Traducir el código de Industria de la RAÍZ (ej: 2 -> "Minería")
-        const indValue = String(data.Industry || '').trim();
+        // 1. TRADUCIR EL CÓDIGO DE INDUSTRIA DE SAP A NOMBRE TEXTO (ej: 2 o "2" -> "Minería")
+        const indValue = String(data.Industria || data.Industry || '').trim();
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
-        // 2. Extraer Dirección Directo de la RAÍZ plana de SAP
-        document.getElementById('CalleNumero').value = data.Address || '';
-        
-        // Traducir código de región (ej: "13" -> "Región Metropolitana de Santiago")
-        const regValue = String(data.BillToState || '').trim();
-        const regionNombre = regionMapRev[regValue] || regValue;
-        document.getElementById('Region').value = regionNombre;
-        
-        // Extraer los nombres puros de Ciudad y Comuna que vienen planos en la raíz
-        let ciudadNombre = data.City || '';
-        let comunaNombre = data.County || '';
+        // 2. EXTRAER DIRECCIÓN SOPORTANDO AMBOS FORMATOS (Estructura anidada original del portal vs Raíz Plana)
+        let calle = '';
+        let regionRaw = '';
+        let comunaRaw = '';
+        let ciudadRaw = '';
 
-        // 🚨 COMODÍN EN CASO DE INVERSIÓN HISTÓRICA EN SAP 🚨
-        const comunasValidas = ChileData[regionNombre] || [];
-        if (comunasValidas.includes(ciudadNombre)) {
-            let aux = ciudadNombre;
-            ciudadNombre = comunaNombre;
-            comunaNombre = aux;
+        if (data.Direccion) {
+            calle = data.Direccion.Calle || '';
+            regionRaw = data.Direccion.Region || '';
+            comunaRaw = data.Direccion.Comuna || '';
+            ciudadRaw = data.Direccion.Ciudad || '';
+        } else {
+            calle = data.Address || '';
+            regionRaw = data.BillToState || '';
+            comunaRaw = data.County || '';
+            ciudadRaw = data.City || '';
         }
 
-        // Popular cascada de Materialize
-        populateComunasYCiudades(regionNombre, comunaNombre, ciudadNombre);
+        document.getElementById('CalleNumero').value = calle;
+        
+        // Traducir código de región (ej: "13" -> "Región Metropolitana de Santiago")
+        const regionNombre = regionMapRev[String(regionRaw).trim()] || regionRaw;
+        document.getElementById('Region').value = regionNombre;
 
-        // Forzar asignación al control visual
-        if (ciudadNombre) document.getElementById('City').value = ciudadNombre;
-        if (comunaNombre) document.getElementById('Comuna').value = comunaNombre;
+        const comunasValidas = ChileData[regionNombre] || [];
+        const ciudadesValidas = ChileCities[regionNombre] || [];
 
-        // 3. Extraer contactos desde la matriz nativa OCPR (ContactEmployees)
+        let comunaFinal = String(comunaRaw).trim();
+        let ciudadFinal = String(ciudadRaw).trim();
+
+        // 🚨 REPARADOR Y ORDENADOR INTELIGENTE DE DATOS INVERTIDOS DE SAP (Ciudad 🔁 Comuna) 🚨
+        // Si el County guardado en SAP contiene la palabra "Región", o si la "Ciudad" guardada es en realidad una comuna:
+        if (comunaFinal.includes('Región') || comunasValidas.includes(ciudadFinal)) {
+            comunaFinal = comunasValidas.includes(ciudadFinal) ? ciudadFinal : (comunasValidas.includes(comunaFinal) ? comunaFinal : '');
+            // Forzar que la ciudad busque su capital provincial válida (ej: "Santiago" en la RM) para ordenar la base de datos
+            ciudadFinal = ciudadesValidas.includes('Santiago') ? 'Santiago' : (ciudadesValidas.length > 0 ? ciudadesValidas[0] : '');
+        }
+
+        // Popular desplegables dinámicos pasándoles las pre-selecciones limpias
+        populateComunasYCiudades(regionNombre, comunaFinal, ciudadFinal);
+
+        // Forzar asignación visual final en el DOM
+        if (ciudadFinal) document.getElementById('City').value = ciudadFinal.trim();
+        if (comunaFinal) document.getElementById('Comuna').value = comunaFinal.trim();
+
+        // 3. EXTRAER CONTACTOS SOPORTANDO FORMATO ORIGINAL Y ARRAYS DE SAP (OCPR)
         let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
         let nomPago = '', emailPago = '', fonoPago = '';
 
-        if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
+        if (data.Contactos) {
+            if (data.Contactos.Adquisiciones) {
+                nomAdq = data.Contactos.Adquisiciones.Nombre || ''; rutAdq = data.Contactos.Adquisiciones.Rut || '';
+                emailAdq = data.Contactos.Adquisiciones.Email || ''; fonoAdq = data.Contactos.Adquisiciones.Fono || '';
+            }
+            if (data.Contactos.PagoProveedores) {
+                nomPago = data.Contactos.PagoProveedores.Nombre || ''; emailPago = data.Contactos.PagoProveedores.Email || '';
+                fonoPago = data.Contactos.PagoProveedores.Fono || '';
+            }
+        } else if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
             const adqCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Firmante o RRLL');
             if (adqCont) {
                 nomAdq = adqCont.FirstName ? (adqCont.FirstName + ' ' + (adqCont.LastName || '')) : adqCont.Name;
@@ -375,7 +402,7 @@
 
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(true); // Carga silenciosa sin bordes rojos
+        validarCampos(true); // Carga silenciosa para arrancar la página de forma limpia
       }
 
       function validarCampos(isInitialLoad = false) {
