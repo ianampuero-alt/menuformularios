@@ -47,7 +47,7 @@
       <div class="row">
         <div class="col s12">
           <div class="card-panel grey lighten-5 z-depth-1">
-            <h4 class="center-align">Actualización de Datos</h4>
+            <h4 class="center-align" style="color: #0056b3;">Actualización de Datos corporativos</h4>
             <div class="row">
               <form class="col s12" id="myForm">
                 <div class="row">
@@ -189,8 +189,6 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
-      const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
-
       const ChileData = {
         "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
         "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
@@ -254,138 +252,204 @@
 
         document.getElementById('Region').addEventListener('change', function() {
             populateComunasYCiudades(this.value);
-            validarCampos();
+            validarCampos(true); 
         });
 
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             if (input) {
                 const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
-                input.addEventListener(eventType, validarCampos);
+                input.addEventListener(eventType, () => { validarCampos(true); });
             }
         });
 
         ['FonoAdq', 'FonoPago'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('blur', function() {
-                let val = this.value.trim().replace(/[\s\-()]/g, '');
-                if (/^9\d{8}$/.test(val)) {
-                    this.value = '+56' + val;
-                } else if (/^569\d{8}$/.test(val)) {
-                    this.value = '+' + val;
-                }
+                this.value = formatPhoneValue(this.value);
                 M.updateTextFields();
-                validarCampos();
+                validarCampos(true);
             });
         });
       });
+
+      function formatPhoneValue(val) {
+        if (!val) return '';
+        let clean = val.trim().replace(/[\s\-()]/g, '');
+        if (/^9\d{8}$/.test(clean)) return '+56' + clean;
+        if (/^569\d{8}$/.test(clean)) return '+' + clean;
+        if (clean.startsWith('+56')) return clean;
+        return clean.startsWith('56') ? '+' + clean : '+56' + clean;
+      }
 
       function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
         const comunaSelect = document.getElementById('Comuna');
         const citySelect = document.getElementById('City');
         
-        // Cargar Comunas
         const comunas = ChileData[regionNombre] || [];
         comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
         comunas.forEach(comuna => {
             let opt = document.createElement('option');
-            opt.value = comuna;
-            opt.textContent = comuna;
-            if (comuna === comunaSeleccionada) opt.selected = true;
+            opt.value = comuna.trim(); opt.textContent = comuna.trim();
+            if (comuna.trim() === comunaSeleccionada.trim()) opt.selected = true;
             comunaSelect.appendChild(opt);
         });
         M.FormSelect.init(comunaSelect);
 
-        // Cargar Ciudades
         const ciudades = ChileCities[regionNombre] || [];
         citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
         ciudades.forEach(ciudad => {
             let opt = document.createElement('option');
-            opt.value = ciudad;
-            opt.textContent = ciudad;
-            if (ciudad === ciudadSeleccionada) opt.selected = true;
+            opt.value = ciudad.trim(); opt.textContent = ciudad.trim();
+            if (ciudad.trim() === ciudadSeleccionada.trim()) opt.selected = true;
             citySelect.appendChild(opt);
         });
         M.FormSelect.init(citySelect);
       }
 
       function fillForm(data) {
-        // Diccionarios inversos de SAP a Texto de Formulario
         const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
         const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
 
-        document.getElementById('RazonSocial').value = data.CardName || '';
+        document.getElementById('RazonSocial').value = data.CardName || data.RazonSocial || '';
         
-        // Traducir código de industria a texto amigable
-        const indValue = data.Industria || '';
+        // 1. TRADUCIR EL CÓDIGO DE INDUSTRIA (Número -> Texto String)
+        const indValue = String(data.Industry || data.Industria || '').trim();
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
-        if (data.Direccion) {
-            document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
-            
-            // Traducir código de región a texto amigable
-            const regValue = data.Direccion.Region || '';
-            const regionNombre = regionMapRev[regValue] || regValue;
-            document.getElementById('Region').value = regionNombre;
-            
-            // Popular desplegables dependientes con sus pre-selecciones
-            populateComunasYCiudades(regionNombre, data.Direccion.Comuna, data.Direccion.Ciudad);
+        // 2. EXTRAER UBICACIONES PLANAS DE SAP
+        let calle = data.Address || (data.Direccion ? data.Direccion.Calle : '') || '';
+        let regionRaw = data.BillToState || (data.Direccion ? data.Direccion.Region : '') || '';
+        let comunaRaw = data.County || (data.Direccion ? data.Direccion.Comuna : '') || '';
+        let ciudadRaw = data.City || (data.Direccion ? data.Direccion.Ciudad : '') || '';
+
+        document.getElementById('CalleNumero').value = calle;
+        
+        // Traducir código de región
+        const regionNombre = regionMapRev[String(regionRaw).trim()] || regionRaw;
+        document.getElementById('Region').value = regionNombre;
+
+        const comunasValidas = ChileData[regionNombre] || [];
+        const ciudadesValidas = ChileCities[regionNombre] || [];
+
+        let comunaFinal = String(comunaRaw).trim();
+        let ciudadFinal = String(ciudadRaw).trim();
+
+        // 🚨 ENDEREZADOR AUTOMÁTICO DE DATOS CRUZADOS EN SAP (Ciudad 🔁 Comuna) 🚨
+        // Si detectamos que SAP guardó la comuna en el campo "City" (ej: ciudadFinal es una comuna válida)
+        if (comunasValidas.includes(ciudadFinal)) {
+            let aux = ciudadFinal;
+            ciudadFinal = comunaFinal; // Lo que estaba en County pasa a Ciudad
+            comunaFinal = aux;        // Lo que estaba en City pasa a Comuna
         }
-        if (data.Contactos && data.Contactos.Adquisiciones) {
-            document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
-            document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
-            document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
-            document.getElementById('FonoAdq').value = data.Contactos.Adquisiciones.Fono || '';
+
+        // Validaciones de seguridad por si venían textos erróneos de arrastre histórico
+        if (comunaFinal && !comunasValidas.includes(comunaFinal)) {
+            // Si el campo quedó inválido, intentamos rescatarlo si la ciudad tenía la comuna
+            if(comunasValidas.includes(ciudadFinal)) comunaFinal = ciudadFinal;
         }
-        if (data.Contactos && data.Contactos.PagoProveedores) {
-            document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
-            document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
-            document.getElementById('FonoPago').value = data.Contactos.PagoProveedores.Fono || '';
+        if (!ciudadesValidas.includes(ciudadFinal)) {
+            ciudadFinal = ciudadesValidas.includes('Santiago') ? 'Santiago' : (ciudadesValidas[0] || '');
         }
+
+        // Popular cascada gráfica de Materialize
+        populateComunasYCiudades(regionNombre, comunaFinal, ciudadFinal);
+
+        // Forzar asignación al control visual
+        if (ciudadFinal) document.getElementById('City').value = ciudadFinal.trim();
+        if (comunaFinal) document.getElementById('Comuna').value = comunaFinal.trim();
+
+        // 3. EXTRAER CONTACTOS (Array OCPR de SAP vs Nodos Custom)
+        let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
+        let nomPago = '', emailPago = '', fonoPago = '';
+
+        if (data.Contactos) {
+            if (data.Contactos.Adquisiciones) {
+                nomAdq = data.Contactos.Adquisiciones.Nombre || ''; rutAdq = data.Contactos.Adquisiciones.Rut || '';
+                emailAdq = data.Contactos.Adquisiciones.Email || ''; fonoAdq = data.Contactos.Adquisiciones.Fono || '';
+            }
+            if (data.Contactos.PagoProveedores) {
+                nomPago = data.Contactos.PagoProveedores.Nombre || ''; emailPago = data.Contactos.PagoProveedores.Email || '';
+                fonoPago = data.Contactos.PagoProveedores.Fono || '';
+            }
+        } else if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
+            const adqCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Firmante o RRLL');
+            if (adqCont) {
+                nomAdq = adqCont.FirstName ? (adqCont.FirstName + ' ' + (adqCont.LastName || '')) : adqCont.Name;
+                rutAdq = adqCont.Pager || ''; emailAdq = adqCont.E_Mail || ''; fonoAdq = adqCont.MobilePhone || '';
+            }
+            const pagoCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Pago Proveedores');
+            if (pagoCont) {
+                nomPago = pagoCont.FirstName ? (pagoCont.FirstName + ' ' + (pagoCont.LastName || '')) : pagoCont.Name;
+                emailPago = pagoCont.E_Mail || ''; fonoPago = pagoCont.MobilePhone || '';
+            }
+        }
+
+        document.getElementById('NombreAdq').value = nomAdq;
+        document.getElementById('RutAdq').value = rutAdq;
+        document.getElementById('EmailAdq').value = emailAdq;
+        document.getElementById('FonoAdq').value = formatPhoneValue(fonoAdq);
+
+        document.getElementById('NombrePago').value = nomPago;
+        document.getElementById('EmailPago').value = emailPago;
+        document.getElementById('FonoPago').value = formatPhoneValue(fonoPago);
+
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(); 
+        validarCampos(true); // Bloqueo pasivo: No arroja alertas rojas al arrancar
       }
 
-      function validarCampos() {
+      function validarCampos(isInitialLoad = false) {
+        let formIsValid = true;
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             if (!input) return;
             const value = input.value ? input.value.trim() : '';
             const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+            
             if (value === '') {
-                container.classList.remove('valid'); container.classList.add('invalid'); return; 
+                container.classList.remove('valid', 'invalid');
+                formIsValid = false;
+                return; 
             }
+            
             let isFormatValid = true;
             if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
             if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
             if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
+            
             if (!isFormatValid) {
-                container.classList.remove('valid'); container.classList.add('invalid');
+                formIsValid = false;
+                if (!isInitialLoad) { container.classList.remove('valid'); container.classList.add('invalid'); }
             } else {
-                container.classList.remove('invalid'); container.classList.add('valid');
+                if (!isInitialLoad) { container.classList.remove('invalid'); container.classList.add('valid'); }
             }
         });
+        return formIsValid;
       }
 
       document.getElementById('myForm').addEventListener('submit', async function(event) {
         event.preventDefault();
+        
+        ALL_CONTACT_FIELDS.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if(!input) return;
+            const value = input.value ? input.value.trim() : '';
+            const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+            if(value === '') { container.classList.add('invalid'); }
+        });
+
+        if (!validarCampos(false)) {
+            M.toast({html: '❌ Revise los campos obligatorios o inválidos.', classes: 'red darken-1'});
+            return;
+        }
+
         const formData = new FormData(event.target);
         const dataObject = {};
         formData.forEach((value, key) => { dataObject[key] = value.trim(); });
         const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
         dataObject.CardCode = storedData.CardCode;
-        let isValid = true;
-        validarCampos(); 
-        ALL_CONTACT_FIELDS.forEach(fieldId => {
-            const input = document.getElementById(fieldId);
-            const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
-            if (dataObject[fieldId] === '' || container.classList.contains('invalid')) isValid = false;
-        });
-        if (!isValid) {
-            M.toast({html: '❌ Revise los campos obligatorios.', classes: 'red darken-1'});
-            return;
-        }
+
         showLoader("Enviando a SAP...");
         try {
             const response = await fetch(WEBHOOK_UPDATE_BP, {
@@ -400,7 +464,7 @@
                 document.querySelector('.container').innerHTML = `
                     <div class="card-panel center-align" style="margin-top: 50px; padding: 40px;">
                         <h4 class="green-text">¡Éxito!</h4>
-                        <p>Datos actualizados correctamente.</p>
+                        <p>Datos actualizados correctamente en SAP y ordenados de forma definitiva.</p>
                         <p class="grey-text">Redirigiendo al menú...</p>
                         <div class="progress"><div class="indeterminate"></div></div>
                     </div>
@@ -424,6 +488,7 @@
         if (!rutCompleto) return false;
         rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
         if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
+        var tmp = rutCompleto.split('0');
         var tmp = rutCompleto.split('‐');
         return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
       }
