@@ -36,7 +36,13 @@
                 </div>
                 
                 <div class="input-field"><input id="Address" type="text" name="Address" required><label for="Address">Dirección</label></div>
-                <div class="input-field"><input id="City" type="text" name="City" required><label for="City">Ciudad</label></div>
+                
+                <div class="input-field">
+                    <select id="City" name="City" required>
+                        <option value="" disabled selected>Seleccione primero una región</option>
+                    </select>
+                    <label for="City">Ciudad</label>
+                </div>
                 
                 <div class="input-field">
                     <select id="BillToState" name="BillToState" required>
@@ -129,6 +135,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
+    // BASE DE DATOS DE COMUNAS POR REGIÓN
     const ChileData = {
         "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
         "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
@@ -148,26 +155,57 @@
         "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Laguna Blanca", "Río Verde", "San Gregorio", "Cabo de Hornos", "Antártica", "Porvenir", "Primavera", "Timaukel", "Natales", "Torres del Paine"]
     };
 
+    // BASE DE DATOS DE CIUDADES POR REGIÓN (CORRESPONDIENTES A PROVINCIAS/CAPITALES)
+    const ChileCities = {
+        "Región Metropolitana de Santiago": ["Santiago", "Puente Alto", "San Bernardo", "Melipilla", "Talagante", "Buin", "Colina"],
+        "Región de Arica y Parinacota": ["Arica", "Putre"],
+        "Región de Tarapacá": ["Iquique", "Pozo Almonte"],
+        "Región de Antofagasta": ["Antofagasta", "Calama", "Tocopilla", "Mejillones"],
+        "Región de Atacama": ["Copiapó", "Vallenar", "Chañaral"],
+        "Región de Coquimbo": ["La Serena", "Coquimbo", "Ovalle", "Illapel", "Vicuña"],
+        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Quillota", "San Antonio", "San Felipe", "Los Andes", "Quilpué", "Villa Alemana"],
+        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "San Fernando", "Santa Cruz", "San Vicente", "Rengo"],
+        "Región del Maule": ["Talca", "Curicó", "Linares", "Cauquenes", "Constitución"],
+        "Región de Ñuble": ["Chillán", "San Carlos", "Quirihue"],
+        "Región del Biobío": ["Concepción", "Los Ángeles", "Talcahuano", "Coronel", "Lota", "Lebu"],
+        "Región de La Araucanía": ["Temuco", "Angol", "Villarrica", "Pucón", "Padre Las Casas"],
+        "Región de Los Ríos": ["Valdivia", "La Unión", "Río Bueno"],
+        "Región de Los Lagos": ["Puerto Montt", "Osorno", "Castro", "Ancud", "Puerto Varas"],
+        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Puerto Aysén", "Chile Chico"],
+        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
+    };
+
     document.addEventListener('DOMContentLoaded', function() {
         M.FormSelect.init(document.querySelectorAll('select'));
     });
 
-    // LÓGICA DE MENÚ DESPLEGABLE DEPENDIENTE (REGIÓN ➡️ COMUNA)
     const regionSelect = document.getElementById('BillToState');
     const comunaSelect = document.getElementById('County');
+    const citySelect = document.getElementById('City');
 
+    // LÓGICA DE MENÚ DESPLEGABLE DEPENDIENTE DOBLE (REGIÓN ➡️ COMUNA Y CIUDAD)
     regionSelect.addEventListener('change', function() {
+        // 1. Cargar Comunas
         const comunas = ChileData[this.value] || [];
         comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una Comuna</option>';
-        
         comunas.forEach(comuna => {
             let opt = document.createElement('option');
             opt.value = comuna;
             opt.textContent = comuna;
             comunaSelect.appendChild(opt);
         });
-        
         M.FormSelect.init(comunaSelect);
+
+        // 2. Cargar Ciudades
+        const ciudades = ChileCities[this.value] || [];
+        citySelect.innerHTML = '<option value="" disabled selected>Seleccione una Ciudad</option>';
+        ciudades.forEach(ciudad => {
+            let opt = document.createElement('option');
+            opt.value = ciudad;
+            opt.textContent = ciudad;
+            citySelect.appendChild(opt);
+        });
+        M.FormSelect.init(citySelect);
     });
 
     // VALIDACIÓN INTERACTIVA DE TELÉFONOS (CON AUTO-PREFIJO +56)
@@ -183,7 +221,6 @@
         
         el.addEventListener('blur', function() {
             let val = this.value.trim().replace(/[\s\-()]/g, '');
-            // Si tiene 9 dígitos y empieza con 9, le agregamos el +56
             if (/^9\d{8}$/.test(val)) {
                 this.value = '+56' + val;
             } else if (/^569\d{8}$/.test(val)) {
@@ -191,7 +228,6 @@
             }
             M.updateTextFields();
 
-            // Verificación del formato final en pantalla
             if (!isValidPhone(this.value) && this.value !== "") {
                 errorSpan.textContent = '❌ Teléfono inválido (Ej: +56912345678).';
                 this.classList.add('invalid');
@@ -252,19 +288,16 @@
     rutInput.addEventListener('blur', function() { formatearYValidar(this, rutErrorSpan); });
     firmanteRutInput.addEventListener('blur', function() { formatearYValidar(this, firmanteRutErrorSpan); });
 
-    // ENVÍO DEL FORMULARIO CON TRADUCCIÓN PARA N8N / SAP
     const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Validar RUTs estrictamente antes de enviar
         if (!validarRutChileno(rutInput.value) || !validarRutChileno(firmanteRutInput.value)) {
             M.toast({html: '❌ Corrija los RUTs inválidos antes de enviar.', classes: 'red darken-1'});
             return;
         }
 
-        // Validar Teléfonos estrictamente antes de enviar
         const phone1 = document.getElementById('C1_Pager');
         const phone2 = document.getElementById('C2_Pager');
         if (!isValidPhone(phone1.value) || !isValidPhone(phone2.value)) {
