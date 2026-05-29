@@ -47,7 +47,7 @@
       <div class="row">
         <div class="col s12">
           <div class="card-panel grey lighten-5 z-depth-1">
-            <h4 class="center-align">Actualización de Datos</h4>
+            <h4 class="center-align" style="color: #0056b3;">Actualización de Datos</h4>
             <div class="row">
               <form class="col s12" id="myForm">
                 <div class="row">
@@ -265,44 +265,45 @@
             }
         });
 
+        // Formateador dinámico para teléfonos
         ['FonoAdq', 'FonoPago'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('blur', function() {
-                let val = this.value.trim().replace(/[\s\-()]/g, '');
-                if (/^9\d{8}$/.test(val)) {
-                    this.value = '+56' + val;
-                } else if (/^569\d{8}$/.test(val)) {
-                    this.value = '+' + val;
-                }
+                this.value = formatPhoneValue(this.value);
                 M.updateTextFields();
                 validarCampos();
             });
         });
       });
 
+      function formatPhoneValue(val) {
+        let clean = val.trim().replace(/[\s\-()]/g, '');
+        if (!clean) return '';
+        if (/^9\d{8}$/.test(clean)) return '+56' + clean;
+        if (/^569\d{8}$/.test(clean)) return '+' + clean;
+        if (clean.startsWith('+56')) return clean;
+        return clean.startsWith('56') ? '+' + clean : '+56' + clean;
+      }
+
       function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
         const comunaSelect = document.getElementById('Comuna');
         const citySelect = document.getElementById('City');
         
-        // Cargar Comunas
         const comunas = ChileData[regionNombre] || [];
         comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
         comunas.forEach(comuna => {
             let opt = document.createElement('option');
-            opt.value = comuna;
-            opt.textContent = comuna;
+            opt.value = comuna; opt.textContent = comuna;
             if (comuna === comunaSeleccionada) opt.selected = true;
             comunaSelect.appendChild(opt);
         });
         M.FormSelect.init(comunaSelect);
 
-        // Cargar Ciudades
         const ciudades = ChileCities[regionNombre] || [];
         citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
         ciudades.forEach(ciudad => {
             let opt = document.createElement('option');
-            opt.value = ciudad;
-            opt.textContent = ciudad;
+            opt.value = ciudad; opt.textContent = ciudad;
             if (ciudad === ciudadSeleccionada) opt.selected = true;
             citySelect.appendChild(opt);
         });
@@ -310,37 +311,45 @@
       }
 
       function fillForm(data) {
-        // Diccionarios inversos de SAP a Texto de Formulario
         const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
         const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
 
         document.getElementById('RazonSocial').value = data.CardName || '';
         
-        // Traducir código de industria a texto amigable
         const indValue = data.Industria || '';
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
         if (data.Direccion) {
             document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
             
-            // Traducir código de región a texto amigable
             const regValue = data.Direccion.Region || '';
             const regionNombre = regionMapRev[regValue] || regValue;
             document.getElementById('Region').value = regionNombre;
             
-            // Popular desplegables dependientes con sus pre-selecciones
-            populateComunasYCiudades(regionNombre, data.Direccion.Comuna, data.Direccion.Ciudad);
+            // 🚨 REPARADOR DE INVERSIÓN DE SAP 🚨
+            let comunaSugerida = data.Direccion.Comuna || '';
+            let ciudadSugerida = data.Direccion.Ciudad || '';
+            const comunasDeEstaRegion = ChileData[regionNombre] || [];
+            
+            // Si SAP guardó la comuna en "Ciudad" o la región en "Comuna", los reordenamos inteligentemente
+            if (comunaSugerida.includes('Región') || comunasDeEstaRegion.includes(ciudadSugerida)) {
+                comunaSugerida = ciudadSugerida; 
+                ciudadSugerida = ''; 
+            }
+            
+            populateComunasYCiudades(regionNombre, comunaSugerida, ciudadSugerida);
         }
+
         if (data.Contactos && data.Contactos.Adquisiciones) {
             document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
             document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
             document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
-            document.getElementById('FonoAdq').value = data.Contactos.Adquisiciones.Fono || '';
+            document.getElementById('FonoAdq').value = formatPhoneValue(data.Contactos.Adquisiciones.Fono || '');
         }
         if (data.Contactos && data.Contactos.PagoProveedores) {
             document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
             document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
-            document.getElementById('FonoPago').value = data.Contactos.PagoProveedores.Fono || '';
+            document.getElementById('FonoPago').value = formatPhoneValue(data.Contactos.PagoProveedores.Fono || '');
         }
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
