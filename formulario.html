@@ -116,6 +116,15 @@
 
                 <div class="row">
                   <div class="input-field col s12">
+                    <select id="City" name="City" required>
+                      <option value="" disabled selected>Seleccione primero una región</option>
+                    </select>
+                    <label>Ciudad</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12">
                     <select id="Comuna" name="Comuna" required>
                       <option value="" disabled selected>Seleccione primero una región</option>
                     </select>
@@ -182,30 +191,47 @@
     <script>
       const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
 
-      // BASE DE DATOS COMPLETA DE COMUNAS CHILENAS
       const ChileData = {
         "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
         "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
         "Región de Tarapacá": ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña", "Colchane", "Huara", "Pica"],
-        "Región de Antofagasta": ["Antofagasta", "Mejillones", "Sierra Gorda", "Taltal", "Calama", "Ollagüe", "San Pedro de Atacama", "Tocopilla", "María Elena"],
-        "Región de Atacama": ["Copiapó", "Caldera", "Tierra Amarilla", "Vallenar", "Alto del Carmen", "Freirina", "Huasco", "Chañaral", "Diego de Almagro"],
-        "Región de Coquimbo": ["La Serena", "Coquimbo", "Andacollo", "La Higuera", "Paiguano", "Vicuña", "Illapel", "Canela", "Los Vilos", "Salamanca", "Ovalle", "Combarbalá", "Monte Patria", "Punitaqui", "Río Hurtado"],
-        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Casablanca", "Concón", "Puchuncaví", "Quintero", "San Antonio", "Algarrobo", "Cartagena", "El Quisco", "El Tabo", "Santo Domingo", "Quillota", "La Calera", "Hijuelas", "La Cruz", "Nogales", "San Felipe", "Catemu", "Llaillay", "Panquehue", "Putaendo", "Santa María", "Los Andes", "Calle Larga", "Rinconada", "San Esteban", "Quilpué", "Villa Alemana", "Limache", "Olmué", "La Ligua", "Cabildo", "Papudo", "Petorca", "Zapallar"],
-        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "Machalí", "Graneros", "Mostazal", "Doñihue", "Coltauco", "Coinco", "Olivar", "Placilla", "Rengo", "Requínoa", "San Vicente", "Pichidegua", "Peumo", "Las Cabras", "San Fernando", "Chimbarongo", "Nancagua", "Peralillo", "Santa Cruz", "Pumanque", "Palmilla", "Litueche", "Navidad", "Pichilemu", "Marchigüe", "La Estrella", "Paredones"],
-        "Región del Maule": ["Talca", "Constitución", "Curepto", "Empedrado", "Maule", "Pelarco", "Pencahue", "Río Claro", "San Clemente", "San Rafael", "Curicó", "Hualañé", "Licantén", "Molina", "Rauco", "Romeral", "Sagrada Familia", "Teno", "Vichuquén", "Linares", "Colbún", "Longaví", "Parral", "Retiro", "San Javier", "Villa Alegre", "Yerbas Buenas", "Cauquenes", "Chanco", "Pelluhue"],
-        "Región de Ñuble": ["Chillán", "Chillán Viejo", "Bulnes", "Cobquecura", "Coelemu", "Coihueco", "El Carmen", "Ninhue", "Ñiquén", "Pemuco", "Pinto", "Portezuelo", "Quillón", "Quirihue", "Ránquil", "San Carlos", "San Fabián", "San Ignacio", "San Nicolás", "Treguaco", "Yungay"],
-        "Región del Biobío": ["Concepción", "Chiguayante", "Coronel", "Florida", "Hualpén", "Hualqui", "Lota", "Penco", "San Pedro de la Paz", "Santa Juana", "Talcahuano", "Tomé", "Los Ángeles", "Antuco", "Cabrero", "Laja", "Mulchén", "Nacimiento", "Negrete", "Quilaco", "Quilleco", "San Rosendo", "Santa Bárbara", "Tucapel", "Yumbel", "Alto Biobío", "Lebu", "Arauco", "Cañete", "Contulmo", "Curanilahue", "Los Álamos", "Tirúa"],
-        "Región de La Araucanía": ["Temuco", "Carahue", "Cunco", "Curarrehue", "Freire", "Galvarino", "Gorbea", "Lautaro", "Loncoche", "Melipeuco", "Nueva Imperial", "Padre Las Casas", "Perquenco", "Pitrufquén", "Pucón", "Saavedra", "Teodoro Schmidt", "Toltén", "Vilcún", "Villarrica", "Cholchol", "Angol", "Collipulli", "Curacautín", "Ercilla", "Lonquimay", "Los Sauces", "Lumaco", "Purén", "Renaico", "Traiguén", "Victoria"],
-        "Región de Los Ríos": ["Valdivia", "Corral", "Lanco", "Los Lagos", "Máfil", "Mariquina", "Paillaco", "Panguipulli", "La Unión", "Futrono", "Lago Ranco", "Río Bueno"],
-        "Región de Los Lagos": ["Puerto Montt", "Calbuco", "Cochamó", "Fresia", "Frutillar", "Los Muermos", "Llanquihue", "Maullín", "Puerto Varas", "Castro", "Ancud", "Chonchi", "Curaco de Vélez", "Dalcahue", "Puqueldón", "Queilén", "Quellón", "Quemchi", "Quinchao", "Osorno", "Puerto Octay", "Purranque", "Puyehue", "Río Negro", "San Juan de la Costa", "San Pablo", "Chaitén", "Futaleufú", "Hualaihué", "Palena"],
-        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Lago Verde", "Aysén", "Cisnes", "Guaitecas", "Cochrane", "O'Higgins", "Tortel", "Chile Chico", "Río Ibáñez"],
-        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Laguna Blanca", "Río Verde", "San Gregorio", "Cabo de Hornos", "Antártica", "Porvenir", "Primavera", "Timaukel", "Natales", "Torres del Paine"]
+        "Región de Antofagasta": ["Antofagasta", "Calama", "Tocopilla", "Mejillones"],
+        "Región de Atacama": ["Copiapó", "Vallenar", "Chañaral"],
+        "Región de Coquimbo": ["La Serena", "Coquimbo", "Ovalle", "Illapel", "Vicuña"],
+        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Quillota", "San Antonio", "San Felipe", "Los Andes", "Quilpué", "Villa Alemana"],
+        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "San Fernando", "Santa Cruz", "San Vicente", "Rengo"],
+        "Región del Maule": ["Talca", "Curicó", "Linares", "Cauquenes", "Constitución"],
+        "Región de Ñuble": ["Chillán", "San Carlos", "Quirihue"],
+        "Región del Biobío": ["Concepción", "Los Ángeles", "Talcahuano", "Coronel", "Lota", "Lebu"],
+        "Región de La Araucanía": ["Temuco", "Angol", "Villarrica", "Pucón", "Padre Las Casas"],
+        "Región de Los Ríos": ["Valdivia", "La Unión", "Río Bueno"],
+        "Región de Los Lagos": ["Puerto Montt", "Osorno", "Castro", "Ancud", "Puerto Varas"],
+        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Puerto Aysén", "Chile Chico"],
+        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
+      };
+
+      const ChileCities = {
+        "Región Metropolitana de Santiago": ["Santiago", "Puente Alto", "San Bernardo", "Melipilla", "Talagante", "Buin", "Colina"],
+        "Región de Arica y Parinacota": ["Arica", "Putre"],
+        "Región de Tarapacá": ["Iquique", "Pozo Almonte"],
+        "Región de Antofagasta": ["Antofagasta", "Calama", "Tocopilla", "Mejillones"],
+        "Región de Atacama": ["Copiapó", "Vallenar", "Chañaral"],
+        "Región de Coquimbo": ["La Serena", "Coquimbo", "Ovalle", "Illapel", "Vicuña"],
+        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Quillota", "San Antonio", "San Felipe", "Los Andes", "Quilpué", "Villa Alemana"],
+        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "San Fernando", "Santa Cruz", "San Vicente", "Rengo"],
+        "Región del Maule": ["Talca", "Curicó", "Linares", "Cauquenes", "Constitución"],
+        "Región de Ñuble": ["Chillán", "San Carlos", "Quirihue"],
+        "Región del Biobío": ["Concepción", "Los Ángeles", "Talcahuano", "Coronel", "Lota", "Lebu"],
+        "Región de La Araucanía": ["Temuco", "Angol", "Villarrica", "Pucón", "Padre Las Casas"],
+        "Región de Los Ríos": ["Valdivia", "La Unión", "Río Bueno"],
+        "Región de Los Lagos": ["Puerto Montt", "Osorno", "Castro", "Ancud", "Puerto Varas"],
+        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Puerto Aysén", "Chile Chico"],
+        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
       };
 
       const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
       const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
-      // Añadimos Region y Comuna para que pasen por el validador interactivo
-      const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'Comuna']);
+      const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'City', 'Comuna']);
 
       document.addEventListener('DOMContentLoaded', function() {
         M.FormSelect.init(document.querySelectorAll('select'));
@@ -226,9 +252,8 @@
             window.location.href = 'menucliente.html';
         });
 
-        // Evento para cambiar comunas dinámicamente según la región
         document.getElementById('Region').addEventListener('change', function() {
-            populateComunas(this.value);
+            populateComunasYCiudades(this.value);
             validarCampos();
         });
 
@@ -240,7 +265,6 @@
             }
         });
 
-        // 👇 ADICIÓN: Formateadores interactivos de teléfono en tiempo real con +56 👇
         ['FonoAdq', 'FonoPago'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('blur', function() {
@@ -256,12 +280,13 @@
         });
       });
 
-      // Función intermedia para popular las comunas en el HTML
-      function populateComunas(regionNombre, comunaSeleccionada = '') {
+      function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
         const comunaSelect = document.getElementById('Comuna');
+        const citySelect = document.getElementById('City');
+        
+        // Cargar Comunas
         const comunas = ChileData[regionNombre] || [];
         comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
-        
         comunas.forEach(comuna => {
             let opt = document.createElement('option');
             opt.value = comuna;
@@ -270,19 +295,42 @@
             comunaSelect.appendChild(opt);
         });
         M.FormSelect.init(comunaSelect);
+
+        // Cargar Ciudades
+        const ciudades = ChileCities[regionNombre] || [];
+        citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
+        ciudades.forEach(ciudad => {
+            let opt = document.createElement('option');
+            opt.value = ciudad;
+            opt.textContent = ciudad;
+            if (ciudad === ciudadSeleccionada) opt.selected = true;
+            citySelect.appendChild(opt);
+        });
+        M.FormSelect.init(citySelect);
       }
 
       function fillForm(data) {
+        // Diccionarios inversos de SAP a Texto de Formulario
+        const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
+        const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
+
         document.getElementById('RazonSocial').value = data.CardName || '';
-        document.getElementById('Industria').value = data.Industria || '';
+        
+        // Traducir código de industria a texto amigable
+        const indValue = data.Industria || '';
+        document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
         if (data.Direccion) {
             document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
-            document.getElementById('Region').value = data.Direccion.Region || '';
-            // Forzar población de comunas basadas en la región que viene de SAP
-            populateComunas(data.Direccion.Region, data.Direccion.Comuna);
+            
+            // Traducir código de región a texto amigable
+            const regValue = data.Direccion.Region || '';
+            const regionNombre = regionMapRev[regValue] || regValue;
+            document.getElementById('Region').value = regionNombre;
+            
+            // Popular desplegables dependientes con sus pre-selecciones
+            populateComunasYCiudades(regionNombre, data.Direccion.Comuna, data.Direccion.Ciudad);
         }
-        
         if (data.Contactos && data.Contactos.Adquisiciones) {
             document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
             document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
@@ -294,7 +342,6 @@
             document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
             document.getElementById('FonoPago').value = data.Contactos.PagoProveedores.Fono || '';
         }
-        
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
         validarCampos(); 
@@ -328,7 +375,6 @@
         formData.forEach((value, key) => { dataObject[key] = value.trim(); });
         const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
         dataObject.CardCode = storedData.CardCode;
-        
         let isValid = true;
         validarCampos(); 
         ALL_CONTACT_FIELDS.forEach(fieldId => {
@@ -390,7 +436,7 @@
       function isValidPhone(phone) {
         if (!phone) return false;
         const limpio = phone.trim().replace(/[\s\-()]/g, '');
-        return /^(\+?56)?(9\d{8}|[2-8]\d{7})$/.test(limpio);
+        return /^\+56(9\d{8}|[2-8]\d{7})$/.test(limpio);
       }
     </script>
   </body>
