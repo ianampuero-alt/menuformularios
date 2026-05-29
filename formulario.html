@@ -254,14 +254,14 @@
 
         document.getElementById('Region').addEventListener('change', function() {
             populateComunasYCiudades(this.value);
-            validarCampos(false); 
+            validarCampos(true); // Validación pasiva al cambiar
         });
 
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             if (input) {
                 const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
-                input.addEventListener(eventType, () => { validarCampos(false); });
+                input.addEventListener(eventType, () => { validarCampos(true); });
             }
         });
 
@@ -270,7 +270,7 @@
             el.addEventListener('blur', function() {
                 this.value = formatPhoneValue(this.value);
                 M.updateTextFields();
-                validarCampos(false);
+                validarCampos(true);
             });
         });
       });
@@ -310,76 +310,44 @@
       }
 
       function fillForm(data) {
-        // 1. DICCIONARIOS TRADUCTORES: Códigos de SAP ➡️ Nombres de Texto para el Formulario
+        // TRADUCTORES INVERSOS DE CÓDIGOS DE SAP ➡️ TEXTOS STRING
         const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
         const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
-        
-        // Diccionario Inverso para traducir los Códigos de Ciudad que envía tu SAP
-        const cityMapRev = {
-          'Santiago': 'Santiago', 'STGO': 'Santiago', '13101': 'Santiago',
-          'Puente Alto': 'Puente Alto', 'San Bernardo': 'San Bernardo', 'Melipilla': 'Melipilla',
-          'Talagante': 'Talagante', 'Buin': 'Buin', 'Colina': 'Colina',
-          'Arica': 'Arica', 'Putre': 'Putre', 'Iquique': 'Iquique', 'Pozo Almonte': 'Pozo Almonte',
-          'Antofagasta': 'Antofagasta', 'ANTOF': 'Antofagasta', 'Calama': 'Calama', 'CALAM': 'Calama',
-          'Tocopilla': 'Tocopilla', 'Mejillones': 'Mejillones', 'Copiapó': 'Copiapó', 'Vallenar': 'Vallenar',
-          'Chañaral': 'Chañaral', 'La Serena': 'La Serena', 'Coquimbo': 'Coquimbo', 'Ovalle': 'Ovalle',
-          'Illapel': 'Illapel', 'Vicuña': 'Vicuña', 'Valparaíso': 'Valparaíso', 'VALPO': 'Valparaíso',
-          'Viña del Mar': 'Viña del Mar', 'Quillota': 'Quillota', 'San Antonio': 'San Antonio',
-          'San Felipe': 'San Felipe', 'Los Andes': 'Los Andes', 'Quilpué': 'Quilpué', 'Villa Alemana': 'Villa Alemana',
-          'Rancagua': 'Rancagua', 'San Fernando': 'San Fernando', 'Santa Cruz': 'Santa Cruz',
-          'San Vicente': 'San Vicente', 'Rengo': 'Rengo', 'Talca': 'Talca', 'Curicó': 'Curicó',
-          'Linares': 'Linares', 'Cauquenes': 'Cauquenes', 'Constitución': 'Constitución', 'Chillán': 'Chillán',
-          'San Carlos': 'San Carlos', 'Quirihue': 'Quirihue', 'Concepción': 'Concepción', 'CONCE': 'Concepción',
-          'Los Ángeles': 'Los Ángeles', 'Talcahuano': 'Talcahuano', 'Coronel': 'Coronel', 'Lota': 'Lota',
-          'Lebu': 'Lebu', 'Temuco': 'Temuco', 'Angol': 'Angol', 'Villarrica': 'Villarrica', 'Pucón': 'Pucón',
-          'Padre Las Casas': 'Padre Las Casas', 'Valdivia': 'Valdivia', 'La Unión': 'La Unión', 'Río Bueno': 'Río Bueno',
-          'Puerto Montt': 'Puerto Montt', 'Osorno': 'Osorno', 'Castro': 'Castro', 'Ancud': 'Ancud',
-          'Puerto Varas': 'Puerto Varas', 'Coyhaique': 'Coyhaique', 'Puerto Aysén': 'Puerto Aysén',
-          'Chile Chico': 'Chile Chico', 'Punta Arenas': 'Punta Arenas', 'Puerto Natales': 'Puerto Natales', 'Porvenir': 'Porvenir'
-        };
 
         document.getElementById('RazonSocial').value = data.CardName || '';
         
-        // Traducir Industria (Código SAP ➡️ Texto de Formulario)
-        const indValue = data.Industry || data.Industria || '';
+        // 1. Traducir el código de Industria de la RAÍZ (ej: 2 -> "Minería")
+        const indValue = String(data.Industry || '').trim();
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
-        // Cargar Dirección
-        const calle = data.Address || (data.Direccion ? data.Direccion.Calle : '') || '';
-        document.getElementById('CalleNumero').value = calle;
+        // 2. Extraer Dirección Directo de la RAÍZ plana de SAP
+        document.getElementById('CalleNumero').value = data.Address || '';
         
-        // Traducir Región (Código SAP ➡️ Texto de Formulario)
-        const regValue = data.BillToState || (data.Direccion ? data.Direccion.Region : '') || '';
+        // Traducir código de región (ej: "13" -> "Región Metropolitana de Santiago")
+        const regValue = String(data.BillToState || '').trim();
         const regionNombre = regionMapRev[regValue] || regValue;
         document.getElementById('Region').value = regionNombre;
         
-        // Traducir Ciudad (Código SAP ➡️ Texto de Formulario)
-        const cityRaw = data.City || (data.Direccion ? data.Direccion.Ciudad : '') || '';
-        const ciudadNombre = cityMapRev[cityRaw] || cityRaw;
+        // Extraer los nombres puros de Ciudad y Comuna que vienen planos en la raíz
+        let ciudadNombre = data.City || '';
+        let comunaNombre = data.County || '';
 
-        // Recuperar Comuna
-        let comunaSugerida = data.County || (data.Direccion ? data.Direccion.Comuna : '') || '';
-        
+        // 🚨 COMODÍN EN CASO DE INVERSIÓN HISTÓRICA EN SAP 🚨
         const comunasValidas = ChileData[regionNombre] || [];
-        const ciudadesValidas = ChileCities[regionNombre] || [];
-
-        // 🚨 REPARADOR AUTOMÁTICO DE DATOS INVERTIDOS DE SAP 🚨
-        if (comunaSugerida.includes('Región') || comunasValidas.includes(ciudadNombre)) {
-            const comunaReal = comunasValidas.includes(ciudadNombre) ? ciudadNombre : (comunasValidas.includes(comunaSugerida) ? comunaSugerida : '');
-            comunaSugerida = comunaReal;
-        }
-
-        if (ciudadNombre && ciudadesValidas.includes(ciudadNombre)) {
-            document.getElementById('City').value = ciudadNombre;
-        }
-        if (comunaSugerida && comunasValidas.includes(comunaSugerida)) {
-            document.getElementById('Comuna').value = comunaSugerida;
+        if (comunasValidas.includes(ciudadNombre)) {
+            let aux = ciudadNombre;
+            ciudadNombre = comunaNombre;
+            comunaNombre = aux;
         }
 
         // Popular cascada de Materialize
-        populateComunasYCiudades(regionNombre, comunaSugerida, ciudadNombre);
+        populateComunasYCiudades(regionNombre, comunaNombre, ciudadNombre);
 
-        // Mapeo Adaptivo Seguro para los Contactos
+        // Forzar asignación al control visual
+        if (ciudadNombre) document.getElementById('City').value = ciudadNombre;
+        if (comunaNombre) document.getElementById('Comuna').value = comunaNombre;
+
+        // 3. Extraer contactos desde la matriz nativa OCPR (ContactEmployees)
         let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
         let nomPago = '', emailPago = '', fonoPago = '';
 
@@ -394,15 +362,6 @@
                 nomPago = pagoCont.FirstName ? (pagoCont.FirstName + ' ' + (pagoCont.LastName || '')) : pagoCont.Name;
                 emailPago = pagoCont.E_Mail || ''; fonoPago = pagoCont.MobilePhone || '';
             }
-        } else if (data.Contactos) {
-            if (data.Contactos.Adquisiciones) {
-                nomAdq = data.Contactos.Adquisiciones.Nombre || ''; rutAdq = data.Contactos.Adquisiciones.Rut || '';
-                emailAdq = data.Contactos.Adquisiciones.Email || ''; fonoAdq = data.Contactos.Adquisiciones.Fono || '';
-            }
-            if (data.Contactos.PagoProveedores) {
-                nomPago = data.Contactos.PagoProveedores.Nombre || ''; emailPago = data.Contactos.PagoProveedores.Email || '';
-                fonoPago = data.Contactos.PagoProveedores.Fono || '';
-            }
         }
 
         document.getElementById('NombreAdq').value = nomAdq;
@@ -416,7 +375,7 @@
 
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(true); // Carga pasiva: no pinta rojo al abrir la pantalla
+        validarCampos(true); // Carga silenciosa sin bordes rojos
       }
 
       function validarCampos(isInitialLoad = false) {
@@ -506,9 +465,9 @@
       function hideLoader() { document.getElementById('loader').style.display = 'none'; }
       function validaRut(rutCompleto) {
         if (!rutCompleto) return false;
-        rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "\u2010");
-        if (!/^[0-9]+\u2010[0-9kK]{1}$/.test(rutCompleto)) return false;
-        var tmp = rutCompleto.split('\u2010');
+        rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
+        if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
+        var tmp = rutCompleto.split('‐');
         return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
       }
       function dv(T) {
