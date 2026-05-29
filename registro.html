@@ -39,12 +39,6 @@
                 <div class="input-field"><input id="City" type="text" name="City" required><label for="City">Ciudad</label></div>
                 
                 <div class="input-field">
-                    <select id="County" name="County" required>
-                        <option value="" disabled selected>Seleccione primero una región</option>
-                    </select>
-                    <label for="County">Comuna / Condado</label>
-                </div>
-                <div class="input-field">
                     <select id="BillToState" name="BillToState" required>
                         <option value="" disabled selected>Seleccione una Región</option>
                         <option value="Región Metropolitana de Santiago">Región Metropolitana de Santiago</option>
@@ -65,6 +59,12 @@
                         <option value="Región de Ñuble">Región de Ñuble</option>
                     </select>
                     <label for="BillToState">Región</label>
+                </div>
+                <div class="input-field">
+                    <select id="County" name="County" required>
+                        <option value="" disabled selected>Seleccione primero una región</option>
+                    </select>
+                    <label for="County">Comuna / Condado</label>
                 </div>
 
                 <div class="input-field">
@@ -97,7 +97,11 @@
                     <span id="c1-rut-error" class="helper-text red-text"></span>
                 </div>
                 <div class="input-field"><input id="C1_Email" type="email" name="C1_Email" required><label for="C1_Email">Correo Electrónico</label></div>
-                <div class="input-field"><input id="C1_Pager" type="text" name="C1_Pager" required><label for="C1_Pager">Teléfono</label></div>
+                <div class="input-field">
+                    <input id="C1_Pager" type="tel" name="C1_Pager" required placeholder="+56912345678">
+                    <label for="C1_Pager">Teléfono</label>
+                    <span id="c1-phone-error" class="helper-text red-text"></span>
+                </div>
             </div>
 
             <h5>Contacto 2: Pago a Proveedores</h5>
@@ -105,7 +109,11 @@
                 <div class="input-field"><input id="C2_FirstName" type="text" name="C2_FirstName" required><label for="C2_FirstName">Nombres</label></div>
                 <div class="input-field"><input id="C2_LastName" type="text" name="C2_LastName" required><label for="C2_LastName">Apellidos</label></div>
                 <div class="input-field"><input id="C2_Email" type="email" name="C2_Email" required><label for="C2_Email">Correo Electrónico</label></div>
-                <div class="input-field"><input id="C2_Pager" type="text" name="C2_Pager" required><label for="C2_Pager">Teléfono</label></div>
+                <div class="input-field">
+                    <input id="C2_Pager" type="tel" name="C2_Pager" required placeholder="+56912345678">
+                    <label for="C2_Pager">Teléfono</label>
+                    <span id="c2-phone-error" class="helper-text red-text"></span>
+                </div>
             </div>
 
             <button type="submit" id="btn-enviar" class="btn waves-effect waves-light btn-submit">Enviar Solicitud de Creación</button>
@@ -144,6 +152,7 @@
         M.FormSelect.init(document.querySelectorAll('select'));
     });
 
+    // LÓGICA DE MENÚ DESPLEGABLE DEPENDIENTE (REGIÓN ➡️ COMUNA)
     const regionSelect = document.getElementById('BillToState');
     const comunaSelect = document.getElementById('County');
 
@@ -161,6 +170,40 @@
         M.FormSelect.init(comunaSelect);
     });
 
+    // VALIDACIÓN INTERACTIVA DE TELÉFONOS (CON AUTO-PREFIJO +56)
+    function isValidPhone(phone) {
+        if (!phone) return false;
+        const limpio = phone.trim().replace(/[\s\-()]/g, '');
+        return /^(\+56)?(9\d{8}|[2-8]\d{7})$/.test(limpio);
+    }
+
+    ['C1_Pager', 'C2_Pager'].forEach(id => {
+        const el = document.getElementById(id);
+        const errorSpan = document.getElementById(id === 'C1_Pager' ? 'c1-phone-error' : 'c2-phone-error');
+        
+        el.addEventListener('blur', function() {
+            let val = this.value.trim().replace(/[\s\-()]/g, '');
+            // Si tiene 9 dígitos y empieza con 9, le agregamos el +56
+            if (/^9\d{8}$/.test(val)) {
+                this.value = '+56' + val;
+            } else if (/^569\d{8}$/.test(val)) {
+                this.value = '+' + val;
+            }
+            M.updateTextFields();
+
+            // Verificación del formato final en pantalla
+            if (!isValidPhone(this.value) && this.value !== "") {
+                errorSpan.textContent = '❌ Teléfono inválido (Ej: +56912345678).';
+                this.classList.add('invalid');
+            } else {
+                errorSpan.textContent = '';
+                this.classList.remove('invalid');
+                if (this.value !== "") this.classList.add('valid');
+            }
+        });
+    });
+
+    // ALGORITMO OFICIAL DE RUT CHILENO
     function validarRutChileno(rut) {
         let valor = rut.replace(/\./g, '').replace('-', '').trim();
         if (valor.length < 2) return false;
@@ -209,13 +252,23 @@
     rutInput.addEventListener('blur', function() { formatearYValidar(this, rutErrorSpan); });
     firmanteRutInput.addEventListener('blur', function() { formatearYValidar(this, firmanteRutErrorSpan); });
 
+    // ENVÍO DEL FORMULARIO CON TRADUCCIÓN PARA N8N / SAP
     const WEBHOOK_REGISTRO_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/registerBP';
 
     document.getElementById('registro-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // Validar RUTs estrictamente antes de enviar
         if (!validarRutChileno(rutInput.value) || !validarRutChileno(firmanteRutInput.value)) {
             M.toast({html: '❌ Corrija los RUTs inválidos antes de enviar.', classes: 'red darken-1'});
+            return;
+        }
+
+        // Validar Teléfonos estrictamente antes de enviar
+        const phone1 = document.getElementById('C1_Pager');
+        const phone2 = document.getElementById('C2_Pager');
+        if (!isValidPhone(phone1.value) || !isValidPhone(phone2.value)) {
+            M.toast({html: '❌ Revise el formato de los números de teléfono (+56...).', classes: 'red darken-1'});
             return;
         }
 
