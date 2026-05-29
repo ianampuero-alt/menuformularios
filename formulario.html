@@ -189,6 +189,8 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
+      const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
+
       const ChileData = {
         "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
         "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
@@ -311,17 +313,17 @@
         const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
         const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
 
-        document.getElementById('RazonSocial').value = data.CardName || data.RazonSocial || '';
+        document.getElementById('RazonSocial').value = data.CardName || '';
         
-        // 1. TRADUCIR EL CÓDIGO DE INDUSTRIA (Número -> Texto String)
-        const indValue = String(data.Industry || data.Industria || '').trim();
+        // 1. TRADUCIR EL CÓDIGO DE INDUSTRIA DE LA RAÍZ DE SAP (Número -> Texto String)
+        const indValue = String(data.Industry || '').trim();
         document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
         
-        // 2. EXTRAER UBICACIONES PLANAS DE SAP
-        let calle = data.Address || (data.Direccion ? data.Direccion.Calle : '') || '';
-        let regionRaw = data.BillToState || (data.Direccion ? data.Direccion.Region : '') || '';
-        let comunaRaw = data.County || (data.Direccion ? data.Direccion.Comuna : '') || '';
-        let ciudadRaw = data.City || (data.Direccion ? data.Direccion.Ciudad : '') || '';
+        // 2. EXTRAER UBICACIONES PLANAS DE LA RAÍZ DE SAP
+        let calle = data.Address || '';
+        let regionRaw = data.BillToState || '';
+        let comunaRaw = data.County || '';
+        let ciudadRaw = data.City || '';
 
         document.getElementById('CalleNumero').value = calle;
         
@@ -335,21 +337,11 @@
         let comunaFinal = String(comunaRaw).trim();
         let ciudadFinal = String(ciudadRaw).trim();
 
-        // 🚨 ENDEREZADOR AUTOMÁTICO DE DATOS CRUZADOS EN SAP (Ciudad 🔁 Comuna) 🚨
-        // Si detectamos que SAP guardó la comuna en el campo "City" (ej: ciudadFinal es una comuna válida)
+        // 🚨 ENDEREZADOR AUTOMÁTICO DE DATOS INVERTIDOS DE SAP (Ciudad 🔁 Comuna) 🚨
         if (comunasValidas.includes(ciudadFinal)) {
             let aux = ciudadFinal;
-            ciudadFinal = comunaFinal; // Lo que estaba en County pasa a Ciudad
-            comunaFinal = aux;        // Lo que estaba en City pasa a Comuna
-        }
-
-        // Validaciones de seguridad por si venían textos erróneos de arrastre histórico
-        if (comunaFinal && !comunasValidas.includes(comunaFinal)) {
-            // Si el campo quedó inválido, intentamos rescatarlo si la ciudad tenía la comuna
-            if(comunasValidas.includes(ciudadFinal)) comunaFinal = ciudadFinal;
-        }
-        if (!ciudadesValidas.includes(ciudadFinal)) {
-            ciudadFinal = ciudadesValidas.includes('Santiago') ? 'Santiago' : (ciudadesValidas[0] || '');
+            ciudadFinal = comunaFinal; 
+            comunaFinal = aux;        
         }
 
         // Popular cascada gráfica de Materialize
@@ -359,20 +351,11 @@
         if (ciudadFinal) document.getElementById('City').value = ciudadFinal.trim();
         if (comunaFinal) document.getElementById('Comuna').value = comunaFinal.trim();
 
-        // 3. EXTRAER CONTACTOS (Array OCPR de SAP vs Nodos Custom)
+        // 3. EXTRAER CONTACTOS (Array OCPR de SAP)
         let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
         let nomPago = '', emailPago = '', fonoPago = '';
 
-        if (data.Contactos) {
-            if (data.Contactos.Adquisiciones) {
-                nomAdq = data.Contactos.Adquisiciones.Nombre || ''; rutAdq = data.Contactos.Adquisiciones.Rut || '';
-                emailAdq = data.Contactos.Adquisiciones.Email || ''; fonoAdq = data.Contactos.Adquisiciones.Fono || '';
-            }
-            if (data.Contactos.PagoProveedores) {
-                nomPago = data.Contactos.PagoProveedores.Nombre || ''; emailPago = data.Contactos.PagoProveedores.Email || '';
-                fonoPago = data.Contactos.PagoProveedores.Fono || '';
-            }
-        } else if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
+        if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
             const adqCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Firmante o RRLL');
             if (adqCont) {
                 nomAdq = adqCont.FirstName ? (adqCont.FirstName + ' ' + (adqCont.LastName || '')) : adqCont.Name;
@@ -396,7 +379,7 @@
 
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(true); // Bloqueo pasivo: No arroja alertas rojas al arrancar
+        validarCampos(true); // Carga pasiva sin bordes rojos
       }
 
       function validarCampos(isInitialLoad = false) {
@@ -484,14 +467,15 @@
         document.getElementById('loader').style.display = 'flex';
       }
       function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+      
       function validaRut(rutCompleto) {
         if (!rutCompleto) return false;
         rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
         if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
-        var tmp = rutCompleto.split('0');
         var tmp = rutCompleto.split('‐');
         return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
       }
+      
       function dv(T) {
         var M = 0, S = 1;
         for (; T; T = Math.floor(T / 10)) { S = (S + T % 10 * (9 - M++ % 6)) % 11; }
