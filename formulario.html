@@ -159,7 +159,7 @@ Actualizar en SAP
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
-    const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
+const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
 
 const ChileData = {
 "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
@@ -199,233 +199,34 @@ const ChileCities = {
 "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
 };
 
-    const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
-    const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
-    const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'City', 'Comuna']);
+const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
+const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
+const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'City', 'Comuna', 'RazonSocial', 'CalleNumero']);
 
 document.addEventListener('DOMContentLoaded', function() {
-M.FormSelect.init(document.querySelectorAll('select'));
+    M.FormSelect.init(document.querySelectorAll('select'));
 
-const storedRut = sessionStorage.getItem('sapRut');
-const storedData = sessionStorage.getItem('sapClientData');
+    const storedRut = sessionStorage.getItem('sapRut');
+    const storedData = sessionStorage.getItem('sapClientData');
 
-if (!storedRut || !storedData) {
-window.location.href = 'index.html';
-return;
-}
+    if (!storedRut || !storedData) {
+        window.location.href = 'index.html';
+        return;
+    }
 
-document.getElementById('RutEmpresa').value = storedRut;
-        // Leemos la estructura AJAX limpia 'data' o directamente el JSON
-const parsed = JSON.parse(storedData);
-const clientData = parsed.data ? parsed.data : parsed;
-fillForm(clientData);
+    document.getElementById('RutEmpresa').value = storedRut;
+    const parsed = JSON.parse(storedData);
+    const clientData = parsed.data ? parsed.data : parsed;
+    fillForm(clientData);
 
-document.getElementById('btnBack').addEventListener('click', function() {
-window.location.href = 'menucliente.html';
-});
+    document.getElementById('btnBack').addEventListener('click', function() {
+        window.location.href = 'menucliente.html';
+    });
 
-document.getElementById('Region').addEventListener('change', function() {
-populateComunasYCiudades(this.value);
-validarCampos(true); 
-});
-
-document.getElementById('RutAdq').addEventListener('blur', function() {
-let limpio = this.value.replace(/\./g, '').replace('-', '').trim();
-if(limpio.length > 1) {
-this.value = limpio.slice(0, -1) + '-' + limpio.slice(-1).toUpperCase();
-}
-const errSpan = document.getElementById('rut-adq-error');
-if (!validaRut(this.value) && limpio !== "") {
-errSpan.textContent = '❌ RUT inválido.';
-this.classList.add('invalid');
-} else {
-errSpan.textContent = '';
-this.classList.remove('invalid');
-}
-});
-
-['FonoAdq', 'FonoPago'].forEach(id => {
-const el = document.getElementById(id);
-el.addEventListener('blur', function() {
-this.value = formatPhoneValue(this.value);
-M.updateTextFields();
-validarCampos(true);
-});
-});
-});
-
-function formatPhoneValue(val) {
-if (!val) return '';
-let clean = val.trim().replace(/[\s\-()]/g, '');
-if (/^9\d{8}$/.test(clean)) return '+56' + clean;
-if (/^569\d{8}$/.test(clean)) return '+' + clean;
-if (clean.startsWith('+56')) return clean;
-return clean.startsWith('56') ? '+' + clean : '+56' + clean;
-}
-
-function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
-const comunaSelect = document.getElementById('Comuna');
-const citySelect = document.getElementById('City');
-
-const comunas = ChileData[regionNombre] || [];
-comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
-comunas.forEach(comuna => {
-let opt = document.createElement('option');
-opt.value = comuna.trim(); opt.textContent = comuna.trim();
-if (comuna.trim() === comunaSeleccionada.trim()) opt.selected = true;
-comunaSelect.appendChild(opt);
-});
-M.FormSelect.init(comunaSelect);
-
-const ciudades = ChileCities[regionNombre] || [];
-citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
-ciudades.forEach(ciudad => {
-let opt = document.createElement('option');
-opt.value = ciudad.trim(); opt.textContent = ciudad.trim();
-if (ciudad.trim() === ciudadSeleccionada.trim()) opt.selected = true;
-citySelect.appendChild(opt);
-});
-M.FormSelect.init(citySelect);
-}
-
-function fillForm(data) {
-        // Restauración absoluta del mapeo AJAX por objetos anidados originales (.Direccion / .Contactos)
-document.getElementById('RazonSocial').value = data.CardName || '';
-document.getElementById('Industria').value = data.Industria || '';
-
-if (data.Direccion) {
-document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
-document.getElementById('Region').value = data.Direccion.Region || '';
-
-let comunaDetectada = data.Direccion.Comuna || '';
-let ciudadDetectada = data.Direccion.Ciudad || '';
-
-            // Desembrollador por si los datos históricos venían cruzados de SAP
-            const comunasDeRegion = ChileData[data.Direccion.Region] || [];
-            if (comunasDeRegion.includes(ciudadDetectada)) {
-                let aux = ciudadDetectada;
-                ciudadDetectada = comunaDetectada;
-                comunaDetectada = aux;
-            }
-
-populateComunasYCiudades(data.Direccion.Region, comunaDetectada, ciudadDetectada);
-
-if (ciudadDetectada) document.getElementById('City').value = ciudadDetectada.trim();
-if (comunaDetectada) document.getElementById('Comuna').value = comunaDetectada.trim();
-}
-
-if (data.Contactos && data.Contactos.Adquisiciones) {
-document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
-document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
-document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
-document.getElementById('FonoAdq').value = formatPhoneValue(data.Contactos.Adquisiciones.Fono || '');
-}
-if (data.Contactos && data.Contactos.PagoProveedores) {
-document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
-document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
-document.getElementById('FonoPago').value = formatPhoneValue(data.Contactos.PagoProveedores.Fono || '');
-}
-
-M.updateTextFields();
-M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(true); // Carga limpia sin pintar líneas rojas
+    document.getElementById('Region').addEventListener('change', function() {
+        populateComunasYCiudades(this.value);
         validarCampos(true); 
-}
-
-function validarCampos(isInitialLoad = false) {
-let formIsValid = true;
-ALL_CONTACT_FIELDS.forEach(fieldId => {
-const input = document.getElementById(fieldId);
-if (!input) return;
-const value = input.value ? input.value.trim() : '';
-const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
-
-if (value === '') {
-container.classList.remove('valid', 'invalid');
-formIsValid = false;
-return; 
-}
-
-let isFormatValid = true;
-if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
-if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
-if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
-
-if (!isFormatValid) {
-formIsValid = false;
-if (!isInitialLoad) { container.classList.remove('valid'); container.classList.add('invalid'); }
-} else {
-if (!isInitialLoad) { container.classList.remove('invalid'); container.classList.add('valid'); }
-}
-});
-return formIsValid;
-}
-
-document.getElementById('myForm').addEventListener('submit', async function(event) {
-event.preventDefault();
-
-ALL_CONTACT_FIELDS.forEach(fieldId => {
-const input = document.getElementById(fieldId);
-if(!input) return;
-const value = input.value ? input.value.trim() : '';
-const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
-if(value === '') { container.classList.add('invalid'); }
-});
-
-if (!validarCampos(false)) {
-M.toast({html: '❌ Revise los campos obligatorios.', classes: 'red darken-1'});
-return;
-}
-
-const formData = new FormData(event.target);
-const dataObject = {};
-formData.forEach((value, key) => { dataObject[key] = value.trim(); });
-const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
-const clientData = storedData.data ? storedData.data : storedData;
-dataObject.CardCode = clientData.CardCode;
-
-showLoader("Enviando a SAP...");
-try {
-const response = await fetch(WEBHOOK_UPDATE_BP, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify(dataObject)
-});
-const result = await response.json();
-hideLoader();
-if (response.ok && result.success) {
-M.toast({html: '✅ Actualizado exitosamente', classes: 'green darken-1'});
-document.querySelector('.container').innerHTML = `
-                   <div class="card-panel center-align" style="margin-top: 50px; padding: 40px;">
-                       <h4 class="green-text">¡Éxito!</h4>
-                       <p>Datos actualizados correctamente en SAP.</p>
-                       <p class="grey-text">Redirigiendo al menú...</p>
-                       <div class="progress"><div class="indeterminate"></div></div>
-                   </div>
-               `;
-setTimeout(() => { window.location.href = "menucliente.html"; }, 4000);
-} else {
-M.toast({html: result.message || '❌ Error.', classes: 'red darken-1'});
-}
-} catch(e) {
-hideLoader();
-M.toast({html: '❌ Error de conexión.', classes: 'red darken-1'});
-}
-});
-
-function showLoader(msg = "Cargando...") {
-document.getElementById('loaderText').innerText = msg;
-document.getElementById('loader').style.display = 'flex';
-}
-function hideLoader() { document.getElementById('loader').style.display = 'none'; }
-
-function validaRut(rutCompleto) {
-if (!rutCompleto) return false;
-rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
-if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
-const tmp = rutCompleto.split('‐');
-return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
-}
+    });
 
     document.getElementById('RutAdq').addEventListener('blur', function() {
         let limpio = this.value.replace(/\./g, '').replace('-', '').trim();
@@ -441,17 +242,210 @@ return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
             this.classList.remove('invalid');
         }
     });
-    
+
+    // Escuchadores dinámicos en tiempo real para limpiar estados invalidos al escribir/cambiar
+    ALL_CONTACT_FIELDS.forEach(fieldId => {
+        const input = document.getElementById(fieldId);
+        if (input) {
+            const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
+            input.addEventListener(eventType, () => { 
+                validarCampos(true); 
+            });
+        }
+    });
+
+    ['FonoAdq', 'FonoPago'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('blur', function() {
+                this.value = formatPhoneValue(this.value);
+                M.updateTextFields();
+                validarCampos(true);
+            });
+        }
+    });
+});
+
+function formatPhoneValue(val) {
+    if (!val) return '';
+    let clean = val.trim().replace(/[\s\-()]/g, '');
+    if (/^9\d{8}$/.test(clean)) return '+56' + clean;
+    if (/^569\d{8}$/.test(clean)) return '+' + clean;
+    if (clean.startsWith('+56')) return clean;
+    return clean.startsWith('56') ? '+' + clean : '+56' + clean;
+}
+
+function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
+    const comunaSelect = document.getElementById('Comuna');
+    const citySelect = document.getElementById('City');
+
+    const comunas = ChileData[regionNombre] || [];
+    comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
+    comunas.forEach(comuna => {
+        let opt = document.createElement('option');
+        opt.value = comuna.trim(); opt.textContent = comuna.trim();
+        if (comuna.trim() === comunaSeleccionada.trim()) opt.selected = true;
+        comunaSelect.appendChild(opt);
+    });
+    M.FormSelect.init(comunaSelect);
+
+    const ciudades = ChileCities[regionNombre] || [];
+    citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
+    ciudades.forEach(ciudad => {
+        let opt = document.createElement('option');
+        opt.value = ciudad.trim(); opt.textContent = ciudad.trim();
+        if (ciudad.trim() === ciudadSeleccionada.trim()) opt.selected = true;
+        citySelect.appendChild(opt);
+    });
+    M.FormSelect.init(citySelect);
+}
+
+function fillForm(data) {
+    document.getElementById('RazonSocial').value = data.CardName || '';
+    document.getElementById('Industria').value = data.Industria || '';
+
+    if (data.Direccion) {
+        document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
+        document.getElementById('Region').value = data.Direccion.Region || '';
+
+        let comunaDetectada = data.Direccion.Comuna || '';
+        let ciudadDetectada = data.Direccion.Ciudad || '';
+
+        const comunasDeRegion = ChileData[data.Direccion.Region] || [];
+        if (comunasDeRegion.includes(ciudadDetectada)) {
+            let aux = ciudadDetectada;
+            ciudadDetectada = comunaDetectada;
+            comunaDetectada = aux;
+        }
+
+        populateComunasYCiudades(data.Direccion.Region, comunaDetectada, ciudadDetectada);
+
+        if (ciudadDetectada) document.getElementById('City').value = ciudadDetectada.trim();
+        if (comunaDetectada) document.getElementById('Comuna').value = comunaDetectada.trim();
+    }
+
+    if (data.Contactos && data.Contactos.Adquisiciones) {
+        document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
+        document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
+        document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
+        document.getElementById('FonoAdq').value = formatPhoneValue(data.Contactos.Adquisiciones.Fono || '');
+    }
+    if (data.Contactos && data.Contactos.PagoProveedores) {
+        document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
+        document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
+        document.getElementById('FonoPago').value = formatPhoneValue(data.Contactos.PagoProveedores.Fono || '');
+    }
+
+    M.updateTextFields();
+    M.FormSelect.init(document.querySelectorAll('select'));
+    validarCampos(true); 
+}
+
+function validarCampos(isInitialLoad = false) {
+    let formIsValid = true;
+    ALL_CONTACT_FIELDS.forEach(fieldId => {
+        const input = document.getElementById(fieldId);
+        if (!input) return;
+        const value = input.value ? input.value.trim() : '';
+        const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+
+        if (value === '') {
+            container.classList.remove('valid', 'invalid');
+            formIsValid = false;
+            return; 
+        }
+
+        let isFormatValid = true;
+        if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
+        if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
+        if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
+
+        if (!isFormatValid) {
+            formIsValid = false;
+            if (!isInitialLoad) { container.classList.remove('valid'); container.classList.add('invalid'); }
+        } else {
+            if (!isInitialLoad) { container.classList.remove('invalid'); container.classList.add('valid'); }
+        }
+    });
+    return formIsValid;
+}
+
+document.getElementById('myForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    ALL_CONTACT_FIELDS.forEach(fieldId => {
+        const input = document.getElementById(fieldId);
+        if(!input) return;
+        const value = input.value ? input.value.trim() : '';
+        const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+        if(value === '') { container.classList.add('invalid'); }
+    });
+
+    if (!validarCampos(false)) {
+        M.toast({html: '❌ Revise los campos obligatorios o inválidos.', classes: 'red darken-1'});
+        return;
+    }
+
+    const formData = new FormData(event.target);
+    const dataObject = {};
+    formData.forEach((value, key) => { dataObject[key] = value.trim(); });
+    const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
+    const clientData = storedData.data ? storedData.data : storedData;
+    dataObject.CardCode = clientData.CardCode;
+
+    showLoader("Enviando a SAP...");
+    try {
+        const response = await fetch(WEBHOOK_UPDATE_BP, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataObject)
+        });
+        const result = await response.json();
+        hideLoader();
+        if (response.ok && result.success) {
+            M.toast({html: '✅ Actualizado exitosamente', classes: 'green darken-1'});
+            document.querySelector('.container').innerHTML = `
+                <div class="card-panel center-align" style="margin-top: 50px; padding: 40px;">
+                    <h4 class="green-text">¡Éxito!</h4>
+                    <p>Datos actualizados correctamente en SAP.</p>
+                    <p class="grey-text">Redirigiendo al menú...</p>
+                    <div class="progress"><div class="indeterminate"></div></div>
+                </div>
+            `;
+            setTimeout(() => { window.location.href = "menucliente.html"; }, 4000);
+        } else {
+            M.toast({html: result.message || '❌ Error.', classes: 'red darken-1'});
+        }
+    } catch(e) {
+        hideLoader();
+        M.toast({html: '❌ Error de conexión.', classes: 'red darken-1'});
+    }
+});
+
+function showLoader(msg = "Cargando...") {
+    document.getElementById('loaderText').innerText = msg;
+    document.getElementById('loader').style.display = 'flex';
+}
+function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+
+function validaRut(rutCompleto) {
+    if (!rutCompleto) return false;
+    rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
+    if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
+    const tmp = rutCompleto.split('‐');
+    return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
+}
+
 function dv(T) {
-var M = 0, S = 1;
-for (; T; T = Math.floor(T / 10)) { S = (S + T % 10 * (9 - M++ % 6)) % 11; }
-return S ? S - 1 : 'k';
+    var M = 0, S = 1;
+    for (; T; T = Math.floor(T / 10)) { S = (S + T % 10 * (9 - M++ % 6)) % 11; }
+    return S ? S - 1 : 'k';
 }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function isValidPhone(phone) {
-if (!phone) return false;
-const limpio = phone.trim().replace(/[\s\-()]/g, '');
-return /^\+56(9\d{8}|[2-8]\d{7})$/.test(limpio);
+    if (!phone) return false;
+    const limpio = phone.trim().replace(/[\s\-()]/g, '');
+    return /^(\+?56)?(9\d{8}|[2-8]\d{7})$/.test(limpio);
 }
 </script>
 </body>
