@@ -48,12 +48,12 @@
             
             <h5>Datos de la Empresa</h5>
             <div class="grid">
-                <div class="input-field col s12" style="grid-column: span 2;">
+                <div class="input-field" style="grid-column: span 2;">
                     <input id="RutEmpresa" type="text" class="validate" name="RutEmpresa" required readonly>
                     <label for="RutEmpresa" class="active">RUT Empresa (formato sin puntos y con guion)</label>
                 </div>
                 
-                <div class="input-field col s12" style="grid-column: span 2;">
+                <div class="input-field" style="grid-column: span 2;">
                     <input id="RazonSocial" type="text" class="validate" name="RazonSocial" required>
                     <label for="RazonSocial" class="active">Razón Social</label>
                 </div>
@@ -159,8 +159,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
-    const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
-
     const ChileData = {
         "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
         "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
@@ -199,6 +197,10 @@
         "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
     };
 
+    const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
+    const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
+    const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'City', 'Comuna']);
+
     document.addEventListener('DOMContentLoaded', function() {
         M.FormSelect.init(document.querySelectorAll('select'));
 
@@ -211,7 +213,10 @@
         }
 
         document.getElementById('RutEmpresa').value = storedRut;
-        fillForm(JSON.parse(storedData));
+        // Leemos la estructura AJAX limpia 'data' o directamente el JSON
+        const parsed = JSON.parse(storedData);
+        const clientData = parsed.data ? parsed.data : parsed;
+        fillForm(clientData);
 
         document.getElementById('btnBack').addEventListener('click', function() {
             window.location.href = 'menucliente.html';
@@ -282,80 +287,49 @@
     }
 
     function fillForm(data) {
-        const industryMapRev = {'1':'Construcción','2':'Minería','27':'Servicios de ingeniería','3':'Transporte, logística y almacenamiento','5':'Comercio de maquinaria','108':'Soluciones tecnológicas','109':'Agrícola y forestal','14':'Comercio general','110':'Energía','8':'Sector público','56':'Otros'};
-        const regionMapRev = {'15':'Región de Arica y Parinacota','1':'Región de Tarapacá','2':'Región de Antofagasta','3':'Región de Atacama','4':'Región de Coquimbo','5':'Región de Valparaíso','6':"Región del Libertador Gral. Bernardo O'Higgins",'7':'Región del Maule','8':'Región del Biobío','9':'Región de La Araucanía','14':'Región de Los Ríos','10':'Región de Los Lagos','11':'Región de Aysén del Gral. Carlos Ibáñez del Campo','12':'Región de Magallanes y de la Antártica Chilena','13':'Región Metropolitana de Santiago','16':'Región de Ñuble'};
-
+        // Restauración absoluta del mapeo AJAX por objetos anidados originales (.Direccion / .Contactos)
         document.getElementById('RazonSocial').value = data.CardName || '';
+        document.getElementById('Industria').value = data.Industria || '';
         
-        // Traducir Industria (Código SAP ➡️ Texto Dropdown)
-        const indValue = String(data.Industry || '').trim();
-        document.getElementById('Industria').value = industryMapRev[indValue] || indValue;
-        
-        // Extraer ubicaciones nativas de la raíz plana de SAP
-        document.getElementById('CalleNumero').value = data.Address || '';
-        
-        const regValue = String(data.BillToState || '').trim();
-        const regionNombre = regionMapRev[regValue] || regValue;
-        document.getElementById('Region').value = regionNombre;
+        if (data.Direccion) {
+            document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
+            document.getElementById('Region').value = data.Direccion.Region || '';
 
-        const comunasValidas = ChileData[regionNombre] || [];
-        const ciudadesValidas = ChileCities[regionNombre] || [];
+            let comunaDetectada = data.Direccion.Comuna || '';
+            let ciudadDetectada = data.Direccion.Ciudad || '';
 
-        let comunaFinal = String(data.County || '').trim();
-        let ciudadFinal = String(data.City || '').trim();
-
-        // 🚨 CONTROLALGORITMO DE INVERSIÓN HISTÓRICA DE SAP (City 🔁 County) 🚨
-        if (comunasValidas.includes(ciudadFinal)) {
-            let aux = ciudadFinal;
-            ciudadFinal = comunaFinal; 
-            comunaFinal = aux;        
-        }
-
-        if (comunaFinal && !comunasValidas.includes(comunaFinal)) {
-            if(comunasValidas.includes(ciudadFinal)) comunaFinal = ciudadFinal;
-        }
-        if (!ciudadesValidas.includes(ciudadFinal)) {
-            ciudadFinal = ciudadesValidas.includes('Santiago') ? 'Santiago' : (ciudadesValidas[0] || '');
-        }
-
-        // Popular elementos gráficos
-        populateComunasYCiudades(regionNombre, comunaFinal, ciudadFinal);
-
-        if (ciudadFinal) document.getElementById('City').value = ciudadFinal.trim();
-        if (comunaFinal) document.getElementById('Comuna').value = comunaFinal.trim();
-
-        // Extraer contactos de la matriz nativa OCPR de SAP
-        let nomAdq = '', rutAdq = '', emailAdq = '', fonoAdq = '';
-        let nomPago = '', emailPago = '', fonoPago = '';
-
-        if (data.ContactEmployees && Array.isArray(data.ContactEmployees)) {
-            const adqCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Firmante o RRLL');
-            if (adqCont) {
-                nomAdq = adqCont.FirstName ? (adqCont.FirstName + ' ' + (adqCont.LastName || '')) : adqCont.Name;
-                rutAdq = adqCont.Pager || ''; emailAdq = adqCont.E_Mail || ''; fonoAdq = adqCont.MobilePhone || '';
+            // Desembrollador por si los datos históricos venían cruzados de SAP
+            const comunasDeRegion = ChileData[data.Direccion.Region] || [];
+            if (comunasDeRegion.includes(ciudadDetectada)) {
+                let aux = ciudadDetectada;
+                ciudadDetectada = comunaDetectada;
+                comunaDetectada = aux;
             }
-            const pagoCont = data.ContactEmployees.find(c => c.EmailGroupCode === 'Pago Proveedores');
-            if (pagoCont) {
-                nomPago = pagoCont.FirstName ? (pagoCont.FirstName + ' ' + (pagoCont.LastName || '')) : pagoCont.Name;
-                emailPago = pagoCont.E_Mail || ''; fonoPago = pagoCont.MobilePhone || '';
-            }
+
+            populateComunasYCiudades(data.Direccion.Region, comunaDetectada, ciudadDetectada);
+
+            if (ciudadDetectada) document.getElementById('City').value = ciudadDetectada.trim();
+            if (comunaDetectada) document.getElementById('Comuna').value = comunaDetectada.trim();
         }
 
-        document.getElementById('NombreAdq').value = nomAdq;
-        document.getElementById('RutAdq').value = rutAdq;
-        document.getElementById('EmailAdq').value = emailAdq;
-        document.getElementById('FonoAdq').value = formatPhoneValue(fonoAdq);
-
-        document.getElementById('NombrePago').value = nomPago;
-        document.getElementById('EmailPago').value = emailPago;
-        document.getElementById('FonoPago').value = formatPhoneValue(fonoPago);
+        if (data.Contactos && data.Contactos.Adquisiciones) {
+            document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
+            document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
+            document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
+            document.getElementById('FonoAdq').value = formatPhoneValue(data.Contactos.Adquisiciones.Fono || '');
+        }
+        if (data.Contactos && data.Contactos.PagoProveedores) {
+            document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
+            document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
+            document.getElementById('FonoPago').value = formatPhoneValue(data.Contactos.PagoProveedores.Fono || '');
+        }
 
         M.updateTextFields();
         M.FormSelect.init(document.querySelectorAll('select'));
-        validarCampos(true); 
-      }
+        validarCampos(true); // Carga limpia sin pintar líneas rojas
+    }
 
-      function validarCampos(isInitialLoad = false) {
+    function validarCampos(isInitialLoad = false) {
         let formIsValid = true;
         ALL_CONTACT_FIELDS.forEach(fieldId => {
             const input = document.getElementById(fieldId);
@@ -382,9 +356,9 @@
             }
         });
         return formIsValid;
-      }
+    }
 
-      document.getElementById('myForm').addEventListener('submit', async function(event) {
+    document.getElementById('myForm').addEventListener('submit', async function(event) {
         event.preventDefault();
         
         ALL_CONTACT_FIELDS.forEach(fieldId => {
@@ -396,7 +370,7 @@
         });
 
         if (!validarCampos(false)) {
-            M.toast({html: '❌ Revise los campos obligatorios o inválidos.', classes: 'red darken-1'});
+            M.toast({html: '❌ Revise los campos obligatorios.', classes: 'red darken-1'});
             return;
         }
 
@@ -404,7 +378,8 @@
         const dataObject = {};
         formData.forEach((value, key) => { dataObject[key] = value.trim(); });
         const storedData = JSON.parse(sessionStorage.getItem('sapClientData'));
-        dataObject.CardCode = storedData.CardCode;
+        const clientData = storedData.data ? storedData.data : storedData;
+        dataObject.CardCode = clientData.CardCode;
 
         showLoader("Enviando a SAP...");
         try {
@@ -420,7 +395,7 @@
                 document.querySelector('.container').innerHTML = `
                     <div class="card-panel center-align" style="margin-top: 50px; padding: 40px;">
                         <h4 class="green-text">¡Éxito!</h4>
-                        <p>Datos actualizados correctamente en SAP y ordenados de forma definitiva.</p>
+                        <p>Datos actualizados correctamente en SAP.</p>
                         <p class="grey-text">Redirigiendo al menú...</p>
                         <div class="progress"><div class="indeterminate"></div></div>
                     </div>
@@ -433,34 +408,48 @@
             hideLoader();
             M.toast({html: '❌ Error de conexión.', classes: 'red darken-1'});
         }
-      });
+    });
 
-      function showLoader(msg = "Cargando...") {
+    function showLoader(msg = "Cargando...") {
         document.getElementById('loaderText').innerText = msg;
         document.getElementById('loader').style.display = 'flex';
-      }
-      function hideLoader() { document.getElementById('loader').style.display = 'none'; }
-      
-      function validaRut(rutCompleto) {
+    }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+    
+    function validaRut(rutCompleto) {
         if (!rutCompleto) return false;
         rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
         if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
         const tmp = rutCompleto.split('‐');
         return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
-      }
-      
-      function dv(T) {
+    }
+    
+    document.getElementById('RutAdq').addEventListener('blur', function() {
+        let limpio = this.value.replace(/\./g, '').replace('-', '').trim();
+        if(limpio.length > 1) {
+            this.value = limpio.slice(0, -1) + '-' + limpio.slice(-1).toUpperCase();
+        }
+        const errSpan = document.getElementById('rut-adq-error');
+        if (!validaRut(this.value) && limpio !== "") {
+            errSpan.textContent = '❌ RUT inválido.';
+            this.classList.add('invalid');
+        } else {
+            errSpan.textContent = '';
+            this.classList.remove('invalid');
+        }
+    });
+    
+    function dv(T) {
         var M = 0, S = 1;
         for (; T; T = Math.floor(T / 10)) { S = (S + T % 10 * (9 - M++ % 6)) % 11; }
         return S ? S - 1 : 'k';
-      }
-      
-      function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-      function isValidPhone(phone) {
+    }
+    function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+    function isValidPhone(phone) {
         if (!phone) return false;
         const limpio = phone.trim().replace(/[\s\-()]/g, '');
         return /^\+56(9\d{8}|[2-8]\d{7})$/.test(limpio);
-      }
+    }
 </script>
 </body>
 </html>
