@@ -199,6 +199,10 @@
         "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
     };
 
+    const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
+    const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
+    const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'City', 'Comuna']);
+
     document.addEventListener('DOMContentLoaded', function() {
         M.FormSelect.init(document.querySelectorAll('select'));
 
@@ -224,18 +228,11 @@
             validarCampos(true); 
         });
 
-        document.getElementById('RutAdq').addEventListener('blur', function() {
-            let limpio = this.value.replace(/\./g, '').replace('-', '').trim();
-            if(limpio.length > 1) {
-                this.value = limpio.slice(0, -1) + '-' + limpio.slice(-1).toUpperCase();
-            }
-            const errSpan = document.getElementById('rut-adq-error');
-            if (!validaRut(this.value) && limpio !== "") {
-                errSpan.textContent = '❌ RUT inválido.';
-                this.classList.add('invalid');
-            } else {
-                errSpan.textContent = '';
-                this.classList.remove('invalid');
+        ALL_CONTACT_FIELDS.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if (input) {
+                const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
+                input.addEventListener(eventType, () => { validarCampos(true); });
             }
         });
 
@@ -284,6 +281,11 @@
     }
 
     function fillForm(data) {
+        // Mapeo inteligente para parchar "Agrícola" de SAP hacia "Agrícola y forestal" del Formulario
+        if (data.Industria && data.Industria.trim() === 'Agrícola') {
+            data.Industria = 'Agrícola y forestal';
+        }
+
         document.getElementById('RazonSocial').value = data.CardName || '';
         document.getElementById('Industria').value = data.Industria || '';
         
@@ -358,7 +360,7 @@
         });
 
         if (!validarCampos(false)) {
-            M.toast({html: '❌ Revise los campos obligatorios.', classes: 'red darken-1'});
+            M.toast({html: '❌ Revise los campos obligatorios o inválidos.', classes: 'red darken-1'});
             return;
         }
 
