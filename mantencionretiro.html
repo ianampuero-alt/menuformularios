@@ -36,16 +36,15 @@
     
     .hidden { display: none !important; }
     
-    /* Botones principales usando Color Primario */
+    /* Botones principales usando Color Primario (Ej: Buscar Contratos) */
     .btn-main { 
-      background-color: var(--color-primario); 
-      color: var(--color-texto); 
+      background-color: var(--color-primario) !important; 
+      color: var(--color-texto) !important; 
       font-weight: bold; 
       border: none; 
     }
     .btn-main:hover { 
-      background-color: #e5b429; 
-      color: var(--color-texto); 
+      background-color: #e5b429 !important; 
     }
 
     /* Clases de texto corporativo */
@@ -56,11 +55,12 @@
     .tabla-contratos { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
     .fila-contrato { background-color: white; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     
-    /* Hover interactivo con el Color Secundario */
+    /* Hover interactivo y Borde Activo con el Color Secundario */
     .fila-contrato:hover { transform: scale(1.005); border-left: 5px solid var(--color-secundario); }
     .fila-contrato td { padding: 15px; vertical-align: middle; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
     
     .fila-detalle { background-color: #f8f9fa; }
+    /* Borde lateral de los equipos usando Color Secundario */
     .contenedor-equipos { padding: 20px; border-left: 5px solid var(--color-secundario); margin: 10px 0; background: white; border-radius: 0 5px 5px 0; }
     
     .item-equipo { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
@@ -94,9 +94,12 @@
     .btn-volver {
       color: var(--color-texto);
       font-weight: 500;
+      background-color: white;
+      border: 1px solid #ccc;
     }
     .btn-volver:hover {
       color: var(--color-secundario);
+      background-color: #f8f9fa;
     }
   </style>
 </head>
@@ -105,7 +108,7 @@
 <div class="container" id="main-container" style="max-width: 900px;">
   
   <div class="header-alo text-center position-relative">
-    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-light position-absolute btn-volver" style="left: 15px; top: 15px;">
+    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-volver position-absolute" style="left: 15px; top: 15px;">
       <i class="bi bi-arrow-left"></i> Volver
     </button>
     <h3 class="m-0" style="padding-top: 5px;">Solicitud de Retiro / Mantención</h3>
@@ -232,6 +235,7 @@
       var direccionCompleta = (nombreObra + " - " + calleObra).trim();
       if (direccionCompleta === "-" || !direccionCompleta) direccionCompleta = "Sin Ubicación Especificada";
 
+      // Reemplazo text-danger por text-corp-sec para que use el Color Secundario
       var filaContrato = `
         <tr class="fila-contrato" onclick="toggleDetalle(${index})">
           <td class="fw-bold text-corp-sec" style="width: 15%;">#${contrato.DocNum}</td>
