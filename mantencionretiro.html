@@ -8,25 +8,96 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   
   <style>
-    body { background-color: #f4f6f9; padding: 20px; font-family: sans-serif; }
-    .card { border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 10px; background: white; }
-    .header-alo { background-color: #d32f2f; color: white; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
-    .hidden { display: none !important; }
-    .btn-dark { background-color: #2c3e50; border-color: #2c3e50; }
+    /* Variables de la Paleta Corporativa */
+    :root {
+      --color-primario: #FEC82E;
+      --color-secundario: #E14A13;
+      --color-texto: #050201;
+      --color-apoyo: #59240F;
+    }
 
+    body { 
+      background-color: #f4f6f9; 
+      padding: 20px; 
+      font-family: sans-serif; 
+      color: var(--color-texto);
+    }
+    
+    .card { border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 10px; background: white; }
+    
+    /* Cabecera usando el Color Secundario */
+    .header-alo { 
+      background-color: var(--color-secundario); 
+      color: white; 
+      padding: 15px; 
+      border-radius: 8px; 
+      margin-bottom: 25px; 
+    }
+    
+    .hidden { display: none !important; }
+    
+    /* Botones principales usando Color Primario */
+    .btn-main { 
+      background-color: var(--color-primario); 
+      color: var(--color-texto); 
+      font-weight: bold; 
+      border: none; 
+    }
+    .btn-main:hover { 
+      background-color: #e5b429; 
+      color: var(--color-texto); 
+    }
+
+    /* Clases de texto corporativo */
+    .text-corp-sec { color: var(--color-secundario) !important; }
+    .text-corp-apoyo { color: var(--color-apoyo) !important; }
+
+    /* Estilos de Tabla y Listas */
     .tabla-contratos { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
     .fila-contrato { background-color: white; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .fila-contrato:hover { transform: scale(1.005); border-left: 5px solid #d32f2f; }
+    
+    /* Hover interactivo con el Color Secundario */
+    .fila-contrato:hover { transform: scale(1.005); border-left: 5px solid var(--color-secundario); }
     .fila-contrato td { padding: 15px; vertical-align: middle; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
     
     .fila-detalle { background-color: #f8f9fa; }
-    .contenedor-equipos { padding: 20px; border-left: 5px solid #d32f2f; margin: 10px 0; background: white; border-radius: 0 5px 5px 0; }
+    .contenedor-equipos { padding: 20px; border-left: 5px solid var(--color-secundario); margin: 10px 0; background: white; border-radius: 0 5px 5px 0; }
     
     .item-equipo { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
     .item-equipo:last-child { border-bottom: none; }
     .info-equipo { flex: 1; min-width: 250px; }
     .acciones-equipo { display: flex; gap: 5px; margin-top: 10px; }
     .btn-accion { font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+
+    /* Botones personalizados para acciones de equipos */
+    .btn-retiro {
+      color: var(--color-secundario);
+      border: 1px solid var(--color-secundario);
+      background: transparent;
+    }
+    .btn-retiro:hover {
+      background: var(--color-secundario);
+      color: white;
+    }
+
+    .btn-servicio {
+      color: var(--color-apoyo);
+      border: 1px solid var(--color-apoyo);
+      background: transparent;
+    }
+    .btn-servicio:hover {
+      background: var(--color-apoyo);
+      color: white;
+    }
+
+    /* Botón volver */
+    .btn-volver {
+      color: var(--color-texto);
+      font-weight: 500;
+    }
+    .btn-volver:hover {
+      color: var(--color-secundario);
+    }
   </style>
 </head>
 <body>
@@ -34,7 +105,7 @@
 <div class="container" id="main-container" style="max-width: 900px;">
   
   <div class="header-alo text-center position-relative">
-    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-light position-absolute" style="left: 15px; top: 15px;">
+    <button onclick="window.location.href='menucliente.html'" class="btn btn-sm btn-light position-absolute btn-volver" style="left: 15px; top: 15px;">
       <i class="bi bi-arrow-left"></i> Volver
     </button>
     <h3 class="m-0" style="padding-top: 5px;">Solicitud de Retiro / Mantención</h3>
@@ -44,12 +115,12 @@
     <label class="form-label fw-bold">RUT del Cliente</label>
     <div class="input-group">
       <input type="text" id="rutInput" class="form-control" placeholder="Ej: 76218944-5" oninput="checkRut(this)">
-      <button class="btn btn-dark" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
+      <button class="btn btn-main" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
     </div>
     <div class="form-text text-muted">Ingrese un RUT para probar la conexión con SAP.</div>
     
     <div id="loading" class="text-center mt-3 hidden">
-      <div class="spinner-border text-danger" role="status"></div>
+      <div class="spinner-border text-corp-sec" role="status"></div>
       <br> <span class="ms-2">Buscando contratos en SAP...</span>
     </div>
   </div>
@@ -163,12 +234,12 @@
 
       var filaContrato = `
         <tr class="fila-contrato" onclick="toggleDetalle(${index})">
-          <td class="fw-bold text-danger" style="width: 15%;">#${contrato.DocNum}</td>
+          <td class="fw-bold text-corp-sec" style="width: 15%;">#${contrato.DocNum}</td>
           <td>
-            <div class="fw-bold">${direccionCompleta}</div>
+            <div class="fw-bold text-dark">${direccionCompleta}</div>
             <small class="text-muted">Estado: ${contrato.U_Estado || 'Activo'}</small>
           </td>
-          <td class="text-end"><i class="bi bi-chevron-down" id="icono-${index}"></i></td>
+          <td class="text-end text-corp-sec"><i class="bi bi-chevron-down" id="icono-${index}"></i></td>
         </tr>
       `;
 
@@ -223,10 +294,10 @@
             <small class="text-muted">${nombre}</small>
           </div>
           <div class="acciones-equipo">
-            <button class="btn btn-sm btn-outline-danger btn-accion" onclick="solicitar('Retiro', ${dataStr})">
+            <button class="btn btn-sm btn-retiro btn-accion" onclick="solicitar('Retiro', ${dataStr})">
               <i class="bi bi-truck"></i> Retiro
             </button>
-            <button class="btn btn-sm btn-outline-primary btn-accion" onclick="solicitar('Mantenimiento', ${dataStr})">
+            <button class="btn btn-sm btn-servicio btn-accion" onclick="solicitar('Mantenimiento', ${dataStr})">
               <i class="bi bi-wrench"></i> Servicio
             </button>
           </div>
@@ -267,14 +338,14 @@
       title: titulo,
       html: `
         <div class="text-start">
-          <p class="text-center text-muted">Equipo: <b>${nombreEquipo}</b></p>
+          <p class="text-center text-muted">Equipo: <b class="text-dark">${nombreEquipo}</b></p>
           ${htmlTelefono} 
           <label class="form-label fw-bold">Detalle / Motivo</label>
           <textarea id="swal-comentario" class="form-control" style="height: 100px;" placeholder="Indique motivo o falla..."></textarea>
         </div>
       `,
       showCancelButton: true,
-      confirmButtonColor: '#d32f2f',
+      confirmButtonColor: '#E14A13', // Color Secundario
       confirmButtonText: 'Enviar Solicitud',
       cancelButtonText: 'Cancelar',
       focusConfirm: false,
@@ -342,14 +413,14 @@
             // Limpiamos sesión
             sessionStorage.clear();
             
-            // Reemplazamos pantalla con mensaje gigante (Estilo Bootstrap)
+            // Reemplazamos pantalla con mensaje gigante usando la paleta
             document.getElementById('main-container').innerHTML = `
                 <div class="card text-center p-5 mt-5 shadow-sm" style="border-radius: 10px;">
                     <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
                     <h3 class="text-success fw-bold mt-3">¡Gracias!</h3>
                     <p class="fs-5 mt-2">Su solicitud ha sido ingresada exitosamente en nuestros sistemas.</p>
                     <p class="text-muted">Lo estamos redirigiendo a la página principal...</p>
-                    <div class="spinner-border text-danger mx-auto mt-4" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <div class="spinner-border text-corp-sec mx-auto mt-4" style="width: 3rem; height: 3rem;" role="status"></div>
                 </div>
             `;
             
