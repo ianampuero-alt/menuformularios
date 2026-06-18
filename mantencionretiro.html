@@ -101,6 +101,12 @@
       color: var(--color-secundario);
       background-color: #f8f9fa;
     }
+    
+    /* Input deshabilitado estético */
+    .input-static {
+        background-color: #e9ecef;
+        cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -117,10 +123,10 @@
   <div class="card p-4 mb-4">
     <label class="form-label fw-bold">RUT del Cliente</label>
     <div class="input-group">
-      <input type="text" id="rutInput" class="form-control" placeholder="Ej: 76218944-5" oninput="checkRut(this)">
-      <button class="btn btn-main" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
+      <input type="text" id="rutInput" class="form-control input-static" readonly>
+      <button class="btn btn-main hidden" onclick="buscar()" id="btnBuscar">Buscar Contratos</button>
     </div>
-    <div class="form-text text-muted">Ingrese un RUT para probar la conexión con SAP.</div>
+    <div class="form-text text-muted">Buscando contratos asociados a este RUT...</div>
     
     <div id="loading" class="text-center mt-3 hidden">
       <div class="spinner-border text-corp-sec" role="status"></div>
@@ -146,12 +152,11 @@
   let contratosData = []; 
   let emailUsuarioGlobal = "prueba@alo.cl"; // Correo por defecto para pruebas manuales
 
-  // --- CARGA INICIAL (MODO PRUEBA MANUAL) ---
+  // --- CARGA INICIAL (AUTOMÁTICA) ---
   window.onload = function() {
     const storedRut = sessionStorage.getItem('sapRut');
     const storedData = sessionStorage.getItem('sapClientData');
     
-    // Si hay sesión guardada, la usamos para rellenar, pero NO echamos al usuario si no hay
     if (storedData) {
       const clientData = JSON.parse(storedData);
       emailUsuarioGlobal = clientData.Contactos?.Adquisiciones?.Email || "prueba@alo.cl"; 
@@ -163,30 +168,34 @@
       
       const inputRut = document.getElementById('rutInput');
       inputRut.value = rutLimpio;
-      checkRut(inputRut); 
+      
+      // Aplicamos el formato visual
+      var raw = rutLimpio;
+      if(raw.length > 1) {
+          inputRut.value = raw.slice(0, -1) + "-" + raw.slice(-1);
+      }
+      
+      // DISPARAMOS LA BÚSQUEDA AUTOMÁTICAMENTE
+      buscar(); 
+    } else {
+        // Si no hay RUT en sesión, redirigimos al login/inicio
+        Swal.fire('Sesión Caducada', 'No se encontró un RUT activo. Volviendo al inicio...', 'warning')
+        .then(() => {
+            window.location.href = "index.html"; // Ajusta a tu página de login
+        });
     }
   };
 
-  // --- FORMATEADOR RUT ---
-  function checkRut(input) {
-    var raw = input.value.toUpperCase().replace(/[^0-9K]/g, "");
-    if (raw.length === 0) { input.value = ""; return; }
-    var dv = raw.slice(-1);       
-    var cuerpo = raw.slice(0, -1); 
-    if (cuerpo.length === 0) { input.value = dv; } 
-    else { input.value = cuerpo + "-" + dv; }
-  }
-
   // --- LLAMADA A N8N PARA BUSCAR CONTRATOS ---
   async function buscar() {
-    var rutVisual = document.getElementById('rutInput').value;
+    // Tomamos el valor limpio sin guion para armar el RUT para SAP
+    var rutVisual = document.getElementById('rutInput').value.replace(/[^0-9Kk]/g, '');
     
     if(rutVisual.length < 3) {
-        Swal.fire('RUT Incompleto', 'Por favor, ingrese un RUT.', 'warning');
-        return;
+        return; // Evita buscar si el RUT no es válido
     }
     
-    var rutParaSap = "C" + rutVisual;
+    var rutParaSap = "C" + rutVisual.toUpperCase();
 
     document.getElementById('loading').classList.remove('hidden');
     document.getElementById('resultadosArea').classList.add('hidden'); 
@@ -201,7 +210,6 @@
         
         const data = await response.json();
         
-        document.getElementById('btnBuscar').disabled = false;
         document.getElementById('loading').classList.add('hidden');
         
         if(data.success === false) {
@@ -212,7 +220,6 @@
         renderizarTabla(data.contratos || []);
         
     } catch(err) {
-        document.getElementById('btnBuscar').disabled = false;
         document.getElementById('loading').classList.add('hidden');
         Swal.fire('Error', 'Fallo de conexión con el servidor n8n.', 'error');
     }
@@ -235,7 +242,6 @@
       var direccionCompleta = (nombreObra + " - " + calleObra).trim();
       if (direccionCompleta === "-" || !direccionCompleta) direccionCompleta = "Sin Ubicación Especificada";
 
-      // Reemplazo text-danger por text-corp-sec para que use el Color Secundario
       var filaContrato = `
         <tr class="fila-contrato" onclick="toggleDetalle(${index})">
           <td class="fw-bold text-corp-sec" style="width: 15%;">#${contrato.DocNum}</td>
