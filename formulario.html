@@ -173,6 +173,12 @@
 
         .hide { display: none !important; }
 
+        /* SweetAlert azul */
+        .swal2-popup { font-family: var(--body) !important; border-radius: 18px !important; }
+        .swal2-title { font-family: var(--display) !important; color: var(--char) !important; }
+        .swal2-html-container { color: var(--muted) !important; }
+        .swal2-styled.swal2-confirm { border-radius: 12px !important; font-family: var(--display) !important; font-weight: 700 !important; }
+
         @media (max-width: 600px) {
             .topbar { padding: 16px 18px; }
             .brand-logo img { height: 28px; }
@@ -317,6 +323,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     const WEBHOOK_UPDATE_BP = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
 
@@ -564,11 +571,24 @@
                 `;
                 setTimeout(() => { window.location.href = "menucliente.html"; }, 4000);
             } else {
-                M.toast({html: result.message || '❌ Error.', classes: 'red darken-1'});
+                const sapMsg = result.detail || result.message || 'No se pudo actualizar en SAP.';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No pudimos guardar tus datos',
+                    html: sapMsg,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#2F7FC4'
+                });
             }
         } catch(e) {
             hideLoader();
-            M.toast({html: '❌ Error de conexión.', classes: 'red darken-1'});
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de conexión',
+                text: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
+                confirmButtonText: 'Reintentar',
+                confirmButtonColor: '#2F7FC4'
+            });
         }
     });
 
