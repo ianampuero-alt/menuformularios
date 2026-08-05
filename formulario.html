@@ -436,32 +436,43 @@
         return clean.startsWith('56') ? '+' + clean : '+56' + clean;
     }
 
+    function norm(s) {
+        return (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
     function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
         const comunaSelect = document.getElementById('Comuna');
         const citySelect = document.getElementById('City');
-        
+
         const comunas = ChileData[regionNombre] || [];
         comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
+        let comunaMatch = '';
         comunas.forEach(comuna => {
+            const t = comuna.trim();
             let opt = document.createElement('option');
-            opt.value = comuna.trim(); opt.textContent = comuna.trim();
-            if (comuna.trim() === comunaSeleccionada.trim()) opt.selected = true;
+            opt.value = t; opt.textContent = t;
             comunaSelect.appendChild(opt);
+            if (norm(t) === norm(comunaSeleccionada)) comunaMatch = t;
         });
+        if (comunaMatch) comunaSelect.value = comunaMatch;   // fuerza el valor canónico exacto
         M.FormSelect.init(comunaSelect);
 
         const ciudades = ChileCities[regionNombre] || [];
         citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
+        let ciudadMatch = '';
         ciudades.forEach(ciudad => {
+            const t = ciudad.trim();
             let opt = document.createElement('option');
-            opt.value = ciudad.trim(); opt.textContent = ciudad.trim();
-            if (ciudad.trim() === ciudadSeleccionada.trim()) opt.selected = true;
+            opt.value = t; opt.textContent = t;
             citySelect.appendChild(opt);
+            if (norm(t) === norm(ciudadSeleccionada)) ciudadMatch = t;
         });
+        if (ciudadMatch) citySelect.value = ciudadMatch;     // fuerza el valor canónico exacto
         M.FormSelect.init(citySelect);
     }
 
     function fillForm(data) {
+        console.log('[formulario v2] datos recibidos:', data);
         document.getElementById('RazonSocial').value = data.CardName || '';
         document.getElementById('Industria').value = data.Industria || '';
         
@@ -473,9 +484,7 @@
             let ciudadDetectada = data.Direccion.Ciudad || '';
 
             populateComunasYCiudades(data.Direccion.Region, comunaDetectada, ciudadDetectada);
-
-            if (ciudadDetectada) document.getElementById('City').value = ciudadDetectada.trim();
-            if (comunaDetectada) document.getElementById('Comuna').value = comunaDetectada.trim();
+            // La preselección (normalizada, sin tildes/mayúsculas) ya la hace populateComunasYCiudades.
         }
 
         if (data.Contactos && data.Contactos.Adquisiciones) {
