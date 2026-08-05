@@ -592,6 +592,10 @@
             hideLoader();
             if (response.ok && result.success) {
                 M.toast({html: '✅ Actualizado exitosamente', classes: 'green darken-1'});
+
+                // Limpiamos la sesión para que el caché del login no quede con datos viejos.
+                sessionStorage.clear();
+
                 document.querySelector('.container').innerHTML = `
                     <div class="card-panel center-align" style="margin-top: 20px; padding: 48px 34px;">
                         <div style="width:76px;height:76px;margin:0 auto 20px;border-radius:50%;background:rgba(46,125,70,.12);display:grid;place-items:center;">
@@ -599,11 +603,12 @@
                         </div>
                         <h4 style="color:#2E7D46; border:none; margin-top:0;">¡Listo!</h4>
                         <p style="font-size:1.05rem;">Tus datos quedaron actualizados en SAP.</p>
-                        <p class="grey-text">Te llevamos de vuelta al menú…</p>
+                        <p class="grey-text">Por seguridad cerraremos tu sesión. Vuelve a ingresar para ver la información actualizada.</p>
                         <div class="progress" style="max-width:320px;margin:24px auto 0;"><div class="indeterminate"></div></div>
                     </div>
                 `;
-                setTimeout(() => { window.location.href = "menucliente.html"; }, 4000);
+                // Volvemos al login (no al menú) para forzar una sesión nueva con datos frescos.
+                setTimeout(() => { window.location.href = "index.html"; }, 4000);
             } else {
                 const sapMsg = result.detail || result.message || 'No se pudo actualizar en SAP.';
                 Swal.fire({
