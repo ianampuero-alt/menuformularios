@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Portal de Clientes · ALO Group & SAP Business One</title>
+    <!-- Materialize CSS & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts: Bricolage Grotesque & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Paleta Oficial ALO Group */
+            --navy-1: #0F161E;
+            --navy-2: #16232E;
+            --navy-3: #22374A;
+            --azure:   #3E8ED0;
+            --azure-2: #2F7FC4;
+            --azure-3: #57A6E8;
+            --amber:   #F0851E;
+
+            --char:    #0F1A24;
+            --paper:   #F4F7FA;
+            --paper-2: #FFFFFF;
+            --line:    #DDE5EE;
+            --muted:   #6B7A8C;
+
+            --color-primario:   #2F7FC4;
+            --color-secundario: #3E8ED0;
+            --color-texto:      #0F1A24;
+            --color-apoyo:      #16232E;
+
+            --display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background: var(--paper);
+            padding: 0; margin: 0;
+            color: var(--char);
+            font-family: var(--body);
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ---------- TOP BRAND BAR ---------- */
+        .topbar {
+            position: relative; overflow: hidden;
+            padding: 16px 28px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            color: #EAF2FB;
+            background:
+                radial-gradient(120% 160% at 100% 0%, rgba(62,142,208,.30) 0%, rgba(62,142,208,0) 45%),
+                linear-gradient(120deg, var(--navy-3) 0%, var(--navy-2) 45%, var(--navy-1) 100%);
+            box-shadow: 0 4px 20px rgba(15,22,30,.25);
+        }
+        .topbar::before {
+            content: ""; position: absolute; inset: 0; pointer-events: none;
+            background: linear-gradient(118deg, rgba(255,255,255,0) 32%, rgba(120,170,220,.14) 47%, rgba(160,200,240,.05) 53%, rgba(255,255,255,0) 62%);
+        }
+        .topbar::after {
+            content: ""; position: absolute;
+            width: 360px; height: 360px; right: -140px; top: -200px;
+            background: radial-gradient(circle, rgba(62,142,208,.38) 0%, rgba(62,142,208,0) 70%);
+            filter: blur(6px); animation: breathe 7s ease-in-out infinite; pointer-events: none;
+        }
+        @keyframes breathe { 0%,100% { transform: scale(1); opacity:.7; } 50% { transform: scale(1.12); opacity:1; } }
+
+        .brand-logo { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; }
+        .brand-logo img { height: 48px; width: auto; display: block; }
+
+        .client-badge {
+            position: relative; z-index: 1;
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(234,242,251,.08);
+            border: 1px solid rgba(234,242,251,.18);
+            padding: 8px 14px; border-radius: 12px;
+        }
+        .client-avatar {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--amber) 0%, #D96B00 100%);
+            color: #fff; font-family: var(--display); font-weight: 800; font-size: 0.9rem;
+            display: grid; place-items: center;
+        }
+        .client-info { display: flex; flex-direction: column; leading-height: 1.2; }
+        .client-info .name { font-weight: 700; font-size: 0.88rem; color: #fff; }
+        .client-info .code { font-family: monospace; font-size: 0.75rem; color: var(--azure-3); }
+
+        /* ---------- NAVIGATION TABS ---------- */
+        .nav-bar {
+            background: var(--navy-1);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 0 24px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: transparent; border: none; color: #A9B6C4;
+            font-family: var(--display); font-weight: 600; font-size: 0.88rem;
+            padding: 14px 18px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+            border-bottom: 3px solid transparent; transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.04); }
+        .tab-btn.active { color: #fff; border-bottom-color: var(--amber); background: rgba(240,133,30,0.1); }
+        .tab-badge { background: var(--navy-3); color: var(--azure-3); font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--azure-2); }
+
+        /* ---------- LAYOUT & CARDS ---------- */
+        .main-content { flex: 1; max-width: 1200px; width: 100%; margin: 28px auto; padding: 0 20px; }
+        .card-panel { padding: 32px 30px !important; border-radius: 20px !important; background: var(--paper-2) !important; border: 1.5px solid var(--line); box-shadow: 0 10px 30px rgba(15,26,36,.05) !important; }
+
+        .tab-section { display: none; }
+        .tab-section.active { display: block; }
+
+        h4 { font-family: var(--display); font-weight: 700; color: var(--char); border: none; letter-spacing: -.5px; margin-top: 0; }
+        .form-eyebrow { font-size: .72rem; letter-spacing: 3px; text-transform: uppercase; color: var(--azure-2); font-weight: 600; margin-bottom: 6px; }
+        .form-sub { color: var(--muted); margin: 6px 0 20px; font-size: 0.95rem; }
+
+        /* Encabezados de sección */
+        h5 {
+            font-family: var(--display); font-weight: 700; font-size: 1.15rem;
+            color: var(--char); letter-spacing: -.3px;
+            border-bottom: none; padding: 0 0 0 14px; margin: 28px 0 16px;
+            position: relative;
+        }
+        h5::before {
+            content: ""; position: absolute; left: 0; top: 3px; bottom: 3px;
+            width: 4px; border-radius: 3px; background: var(--amber);
+        }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; }
+
+        .contact-section {
+            background: #F8FAFC;
+            padding: 20px 22px 6px;
+            border-left: 4px solid var(--azure);
+            margin-bottom: 20px;
+            border-radius: 0 14px 14px 0;
+            border: 1.5px solid var(--line); border-left-width: 4px;
+        }
+
+        /* ---------- STATS CARDS ---------- */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .stat-card .val { font-family: var(--display); font-size: 1.8rem; font-weight: 800; color: var(--navy-1); line-height: 1; }
+        .stat-card .lbl { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+        .stat-card .ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 1.4rem; }
+
+        /* ---------- TABLES ---------- */
+        table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; }
+        table.data-table th { background: #F8FAFC; color: var(--muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 16px; border-bottom: 1.5px solid var(--line); }
+        table.data-table td { padding: 14px 16px; font-size: 0.88rem; border-bottom: 1px solid var(--line); color: var(--char); }
+        table.data-table tr:last-child td { border-bottom: none; }
+
+        .badge-status {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 700;
+        }
+        .badge-status.active { background: #E6F4EA; color: #137333; }
+        .badge-status.pending { background: #FEF7E0; color: #B06000; }
+        .badge-status.error { background: #FCE8E6; color: #C5221F; }
+
+        /* ---------- INPUTS (Materialize recoloreado) ---------- */
+        .input-field > label { color: var(--muted); }
+        .input-field > label.active { color: var(--muted); }
+        input[type=text], input[type=email], input[type=tel], textarea { color: var(--char); }
+
+        input[type=text]:focus:not([readonly]),
+        input[type=email]:focus:not([readonly]),
+        input[type=tel]:focus:not([readonly]),
+        textarea:focus:not([readonly]) {
+            border-bottom: 1px solid var(--azure) !important;
+            box-shadow: 0 1px 0 0 var(--azure) !important;
+        }
+
+        .input-field .select-wrapper { width: 100%; }
+        .select-wrapper input.select-dropdown:focus { border-bottom: 1px solid var(--azure); }
+        .dropdown-content li > a, .dropdown-content li > span { color: var(--azure-2) !important; }
+
+        /* ---------- BOTONES ---------- */
+        .btn-alo-orange {
+            background-color: var(--amber) !important; color: #fff !important;
+            font-family: var(--display); font-weight: 700; text-transform: none;
+            border-radius: 12px !important; height: 48px; line-height: 48px;
+            box-shadow: 0 6px 18px rgba(240,133,30,.32) !important; padding: 0 24px;
+        }
+        .btn-alo-orange:hover { background-color: #D96B00 !important; }
+
+        .btn-submit {
+            background-color: var(--azure-2) !important; color: #fff !important;
+            font-family: var(--display); font-weight: 700; text-transform: none;
+            border-radius: 12px !important; height: 48px; line-height: 48px;
+            box-shadow: 0 6px 18px rgba(47,127,196,.32) !important;
+        }
+        .btn-submit:hover { background-color: var(--azure) !important; }
+
+        /* ---------- LOADER OVERLAY ---------- */
+        .loader-overlay {
+            position: fixed; inset: 0; width: 100%; height: 100%;
+            background-color: rgba(15,22,30,.82); backdrop-filter: blur(4px);
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; color: #EAF2FB; text-align: center;
+        }
+        .loader-spinner {
+            border: 4px solid rgba(234,242,251,.25);
+            border-top: 4px solid var(--amber);
+            border-radius: 50%; width: 52px; height: 52px; animation: spin 1s linear infinite; margin-bottom: 14px;
+        }
+        .loader-text { font-family: var(--display); font-size: 1.15em; font-weight: 700; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+        .empty-state i { font-size: 3.2rem; color: #CBD5E1; margin-bottom: 12px; }
+
+        @media (max-width: 768px) {
+            .topbar { padding: 14px 18px; flex-direction: column; align-items: flex-start; }
+            .brand-logo img { height: 40px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loader-overlay">
+    <div class="loader-spinner"></div>
+    <div id="loaderText" class="loader-text">Conectando con SAP Business One...</div>
+</div>
+
+<!-- TOP HEADER -->
+<header class="topbar">
+    <div class="brand-logo">
+        <img src="data:image/png;base64,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
+--STREAMING_CHUNK_SPLIT--
+9/9k=" alt="ALO Group">
+    </div>
+
+    <!-- Active Client Profile Status -->
+    <div class="client-badge" id="client-badge-container">
+        <div class="client-avatar" id="client-avatar">AL</div>
+        <div class="client-info">
+            <span class="name" id="display-client-name">Autenticando Cliente...</span>
+            <span class="code">RUT: <strong id="display-rut" style="color:#fff;">--</strong> | CardCode: <strong id="display-cardcode" style="color:var(--amber);">--</strong></span>
+        </div>
+    </div>
+</header>
+
+<!-- TAB NAVIGATION -->
+<nav class="nav-bar">
+    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active">
+        <i class="material-icons text-amber">dashboard</i> Resumen General
+    </button>
+    <button onclick="switchTab('equipos')" id="tab-equipos" class="tab-btn">
+        <i class="material-icons">directions_bus</i> Mis Equipos / Flotas <span class="tab-badge" id="badge-equipos">0</span>
+    </button>
+    <button onclick="switchTab('solicitudes')" id="tab-solicitudes" class="tab-btn">
+        <i class="material-icons">build</i> Solicitudes de Asistencia
+    </button>
+    <button onclick="switchTab('finanzas')" id="tab-finanzas" class="tab-btn">
+        <i class="material-icons">account_balance_wallet</i> Situación Comercial
+    </button>
+    <button onclick="switchTab('update-bp')" id="tab-update-bp" class="tab-btn">
+        <i class="material-icons">edit</i> Actualizar Datos
+    </button>
+</nav>
+
+<main class="main-content">
+
+    <!-- ==================== TAB 1: DASHBOARD ==================== -->
+    <section id="sec-dashboard" class="tab-section active">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div>
+                    <div class="val" id="stat-equipos-count">0</div>
+                    <div class="lbl">Equipos Arrendados</div>
+                </div>
+                <div class="stat-ico" style="background:#EBF5FF; color:var(--azure);"><i class="material-icons">fire_truck</i></div>
+            </div>
+            <div class="stat-card">
+                <div>
+                    <div class="val" id="stat-contratos-count">0</div>
+                    <div class="lbl">Contratos Activos</div>
+                </div>
+                <div class="stat-ico" style="background:#FFF4E5; color:var(--amber);"><i class="material-icons">assignment</i></div>
+            </div>
+            <div class="stat-card">
+                <div>
+                    <div class="val" id="stat-servicios-count">0</div>
+                    <div class="lbl">Solicitudes Recientes</div>
+                </div>
+                <div class="stat-ico" style="background:#E6F4EA; color:#137333;"><i class="material-icons">handyman</i></div>
+            </div>
+        </div>
+
+        <div class="card-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div class="form-eyebrow">Visión General SAP B1</div>
+                    <h4 style="margin:0;">Equipos y Flota en Faena</h4>
+                </div>
+                <button onclick="switchTab('solicitudes')" class="btn waves-effect waves-light btn-alo-orange">
+                    <i class="material-icons left">add_circle</i> Nueva Solicitud
+                </button>
+            </div>
+            <p class="form-sub">Listado en tiempo real obtenido directamente desde SAP Service Layer mediante n8n.</p>
+
+            <div id="dashboard-equipos-container">
+                <div class="empty-state">
+                    <i class="material-icons">sync</i>
+                    <p>Cargando información de contratos desde SAP B1...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 2: MIS EQUIPOS / CONTRATOS ==================== -->
+    <section id="sec-equipos" class="tab-section">
+        <div class="card-panel">
+            <div class="form-eyebrow">Parque de Maquinarias</div>
+            <h4>Equipos Arrendados y Contratos VDT</h4>
+            <p class="form-sub">Filtro aplicado por CardCode registrado en SAP Business One.</p>
+
+            <div id="equipos-table-container">
+                <div class="empty-state">
+                    <i class="material-icons">inventory_2</i>
+                    <p>Obteniendo contratos de arrendamiento activos...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 3: SOLICITUDES DE ASISTENCIA ==================== -->
+    <section id="sec-solicitudes" class="tab-section">
+        <div class="card-panel">
+            <div class="form-eyebrow">Gestión Técnica & Retiros</div>
+            <h4>Generar Solicitud de Mantención o Retiro</h4>
+            <p class="form-sub">Envío directo de solicitud a SAP Business One (`VID_MTSOLREP` / `AG_SOLDESRET`).</p>
+
+            <form id="formSolicitud" novalidate>
+                <div class="grid">
+                    <div class="input-field" style="grid-column: span 2;">
+                        <select id="sol_tipoSolicitud" name="tipoSolicitud" required>
+                            <option value="Mantenimiento" selected>Mantenimiento / Asistencia Técnica</option>
+                            <option value="RETIRO">Solicitud de Retiro de Equipo</option>
+                        </select>
+                        <label>Tipo de Solicitud *</label>
+                    </div>
+
+                    <div class="input-field" style="grid-column: span 2;">
+                        <select id="sol_contrato" name="contrato" required>
+                            <option value="" disabled selected>Cargando contratos del cliente...</option>
+                        </select>
+                        <label>Seleccionar Contrato *</label>
+                    </div>
+
+                    <div class="input-field" style="grid-column: span 2;">
+                        <select id="sol_equipo" name="numInterno" required disabled>
+                            <option value="" disabled selected>Seleccione primero un contrato</option>
+                        </select>
+                        <label>Seleccionar Equipo Afectado *</label>
+                    </div>
+
+                    <div class="input-field">
+                        <input id="sol_direccion" type="text" name="direccion" required placeholder="Ej: Planta Norte, Av. Central 1234, Quilicura">
+                        <label for="sol_direccion" class="active">Dirección / Obra o Faena *</label>
+                    </div>
+
+                    <div class="input-field">
+                        <input id="sol_telefono" type="tel" name="telefono" placeholder="+56912345678">
+                        <label for="sol_telefono" class="active">Teléfono Contacto en Obra</label>
+                    </div>
+
+                    <div id="row-retiro-extra" class="grid" style="grid-column: span 2; display:none;">
+                        <div class="input-field">
+                            <input id="sol_fechaSol" type="date" name="fechaSolicitada">
+                            <label for="sol_fechaSol" class="active">Fecha Deseada de Retiro</label>
+                        </div>
+                        <div class="input-field">
+                            <select id="sol_ampm" name="ampm">
+                                <option value="AM" selected>Mañana (AM)</option>
+                                <option value="PM">Tarde (PM)</option>
+                            </select>
+                            <label>Jornada</label>
+                        </div>
+                    </div>
+
+                    <div class="input-field" style="grid-column: span 2;">
+                        <textarea id="sol_comentarios" name="comentarios" class="materialize-textarea" placeholder="Describa los síntomas observados, horómetro actual o detalles de la solicitud..." style="min-height:90px;"></textarea>
+                        <label for="sol_comentarios" class="active">Detalles o Comentarios de la Solicitud</label>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px; text-align:right;">
+                    <button class="btn waves-effect waves-light btn-alo-orange" type="submit" id="btnEnviarSolicitud">
+                        Enviar Solicitud a SAP
+                        <i class="material-icons right">send</i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 4: SITUACIÓN COMERCIAL ==================== -->
+    <section id="sec-finanzas" class="tab-section">
+        <div class="card-panel">
+            <div class="form-eyebrow">Estado de Cuenta</div>
+            <h4>Situación Comercial y Documentos</h4>
+            <p class="form-sub">Consulta de facturas y documentos de venta asociados en SAP B1.</p>
+
+            <div id="finanzas-container">
+                <div class="empty-state">
+                    <i class="material-icons">account_balance</i>
+                    <p>Consultando estado de cuenta en tiempo real...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 5: ACTUALIZAR DATOS ==================== -->
+    <section id="sec-update-bp" class="tab-section">
+        <div class="card-panel">
+            <div class="form-eyebrow">Portal de servicios</div>
+            <h4 class="center-align" style="margin-top: 0;">Actualiza tus datos</h4>
+            <p class="form-sub">Revisa la información de tu empresa y tus contactos. Guarda los cambios cuando esté todo correcto.</p>
+
+            <form id="myForm" novalidate>
+
+                <h5>Datos de la empresa</h5>
+                <div class="grid">
+                    <div class="input-field" style="grid-column: span 2;">
+                        <input id="RutEmpresa" type="text" class="validate" name="RutEmpresa" required readonly>
+                        <label for="RutEmpresa" class="active">RUT empresa (sin puntos y con guion)</label>
+                    </div>
+
+                    <div class="input-field" style="grid-column: span 2;">
+                        <input id="RazonSocial" type="text" class="validate" name="RazonSocial" required>
+                        <label for="RazonSocial" class="active">Razón social</label>
+                    </div>
+
+                    <div class="input-field">
+                        <select id="Industria" name="Industria" required>
+                            <option value="" disabled selected>Seleccione una industria</option>
+                            <option value="Construcción">Construcción</option>
+                            <option value="Minería">Minería</option>
+                            <option value="Servicios de ingeniería">Servicios de ingeniería</option>
+                            <option value="Transporte, logística y almacenamiento">Transporte, logística y almacenamiento</option>
+                            <option value="Comercio de maquinaria">Comercio de maquinaria</option>
+                            <option value="Soluciones tecnológicas">Soluciones tecnológicas</option>
+                            <option value="Agrícola y forestal">Agrícola y forestal</option>
+                            <option value="Comercio general">Comercio general</option>
+                            <option value="Energía">Energía</option>
+                            <option value="Sector público">Sector público</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                        <label>Industria / Giro</label>
+                    </div>
+
+                    <div class="input-field">
+                        <input id="CalleNumero" type="text" class="validate" name="CalleNumero" required>
+                        <label for="CalleNumero" class="active">Calle y número</label>
+                    </div>
+
+                    <div class="input-field">
+                        <select id="Region" name="Region" required>
+                            <option value="" disabled selected>Seleccione una región</option>
+                            <option value="Región de Arica y Parinacota">Arica y Parinacota</option>
+                            <option value="Región de Tarapacá">Tarapacá</option>
+                            <option value="Región de Antofagasta">Antofagasta</option>
+                            <option value="Región de Atacama">Atacama</option>
+                            <option value="Región de Coquimbo">Coquimbo</option>
+                            <option value="Región de Valparaíso">Valparaíso</option>
+                            <option value="Región del Libertador Gral. Bernardo O'Higgins">O'Higgins</option>
+                            <option value="Región del Maule">Maule</option>
+                            <option value="Región de Ñuble">Ñuble</option>
+                            <option value="Región del Biobío">Biobío</option>
+                            <option value="Región de La Araucanía">Araucanía</option>
+                            <option value="Región de Los Ríos">Los Ríos</option>
+                            <option value="Región de Los Lagos">Los Lagos</option>
+                            <option value="Región de Aysén del Gral. Carlos Ibáñez del Campo">Aysén</option>
+                            <option value="Región de Magallanes y de la Antártica Chilena">Magallanes</option>
+                            <option value="Región Metropolitana de Santiago">Metropolitana de Santiago</option>
+                        </select>
+                        <label>Región</label>
+                    </div>
+
+                    <div class="input-field">
+                        <select id="City" name="City" required>
+                            <option value="" disabled selected>Seleccione primero una región</option>
+                        </select>
+                        <label>Ciudad</label>
+                    </div>
+
+                    <div class="input-field" style="grid-column: span 2;">
+                        <select id="Comuna" name="Comuna" required>
+                            <option value="" disabled selected>Seleccione primero una región</option>
+                        </select>
+                        <label>Comuna</label>
+                    </div>
+                </div>
+
+                <h5>Contacto 1 · Firmante o representante legal (RRLL)</h5>
+                <div class="contact-section grid">
+                    <div class="input-field"><input id="NombreAdq" type="text" name="NombreAdq" required><label for="NombreAdq" class="active">Nombre completo</label></div>
+                    <div class="input-field">
+                        <input id="RutAdq" type="text" name="RutAdq" required placeholder="12345678-9">
+                        <label for="RutAdq" class="active">RUT del contacto</label>
+                        <span id="rut-adq-error" class="helper-text red-text"></span>
+                    </div>
+                    <div class="input-field"><input id="EmailAdq" type="email" name="EmailAdq" required><label for="EmailAdq" class="active">Email</label></div>
+                    <div class="input-field">
+                        <input id="FonoAdq" type="tel" name="FonoAdq" required placeholder="+56912345678">
+                        <label for="FonoAdq" class="active">Teléfono</label>
+                    </div>
+                </div>
+
+                <h5>Contacto 2 · Pago a proveedores</h5>
+                <div class="contact-section grid">
+                    <div class="input-field"><input id="NombrePago" type="text" name="NombrePago" required><label for="NombrePago" class="active">Nombre completo</label></div>
+                    <div class="input-field"><input id="EmailPago" type="email" name="EmailPago" required><label for="EmailPago" class="active">Correo electrónico</label></div>
+                    <div class="input-field" style="grid-column: span 2;">
+                        <input id="FonoPago" type="tel" name="FonoPago" required placeholder="+56912345678">
+                        <label for="FonoPago" class="active">Teléfono móvil</label>
+                    </div>
+                </div>
+
+                <div class="btn-container" style="display:flex; gap:15px; margin-top:30px;">
+                    <button class="btn waves-effect waves-light btn-submit" type="submit" name="action" style="flex:1;">
+                        Guardar cambios
+                        <i class="material-icons right">send</i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+</main>
+
+<!-- JS LIBRARIES -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- APPLICATION SCRIPT -->
+<script>
+    /* ==================== WEBHOOK ENDPOINTS ==================== */
+    const WEBHOOK_GET_CONTRATOS = 'https://alogroup.app.n8n.cloud/webhook/sap/get-contratos';
+    const WEBHOOK_SOLICITUDES   = 'https://alogroup.app.n8n.cloud/webhook/sap/solicitudes-sap';
+    const WEBHOOK_UPDATE_BP     = 'https://alogroup.app.n8n.cloud/webhook/sap/updateBP';
+
+    /* Global State */
+    let currentRut = '';
+    let currentCardCode = '';
+    let currentContratos = [];
+
+    const ChileData = {
+        "Región Metropolitana de Santiago": ["Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Puente Alto", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Bernardo", "San Joaquín", "San Miguel", "San Ramón", "Santiago", "Vitacura", "Colina", "Lampa", "Tiltil", "Pirque", "San José de Maipo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
+        "Región de Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
+        "Región de Tarapacá": ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña", "Colchane", "Huara", "Pica"],
+        "Región de Antofagasta": ["Antofagasta", "Calama", "Tocopilla", "Mejillones"],
+        "Región de Atacama": ["Copiapó", "Vallenar", "Chañaral"],
+        "Región de Coquimbo": ["La Serena", "Coquimbo", "Ovalle", "Illapel", "Vicuña"],
+        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Quillota", "San Antonio", "San Felipe", "Los Andes", "Quilpué", "Villa Alemana"],
+        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "San Fernando", "Santa Cruz", "San Vicente", "Rengo"],
+        "Región del Maule": ["Talca", "Curicó", "Linares", "Cauquenes", "Constitución"],
+        "Región de Ñuble": ["Chillán", "San Carlos", "Quirihue"],
+        "Región del Biobío": ["Concepción", "Los Ángeles", "Talcahuano", "Coronel", "Lota", "Lebu"],
+        "Región de La Araucanía": ["Temuco", "Angol", "Villarrica", "Pucón", "Padre Las Casas"],
+        "Región de Los Ríos": ["Valdivia", "La Unión", "Río Bueno"],
+        "Región de Los Lagos": ["Puerto Montt", "Osorno", "Castro", "Ancud", "Puerto Varas"],
+        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Puerto Aysén", "Chile Chico"],
+        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
+    };
+
+    const ChileCities = {
+        "Región Metropolitana de Santiago": ["Santiago", "Puente Alto", "San Bernardo", "Melipilla", "Talagante", "Buin", "Colina"],
+        "Región de Arica y Parinacota": ["Arica", "Putre"],
+        "Región de Tarapacá": ["Iquique", "Pozo Almonte"],
+        "Región de Antofagasta": ["Antofagasta", "Calama", "Tocopilla", "Mejillones"],
+        "Región de Atacama": ["Copiapó", "Vallenar", "Chañaral"],
+        "Región de Coquimbo": ["La Serena", "Coquimbo", "Ovalle", "Illapel", "Vicuña"],
+        "Región de Valparaíso": ["Valparaíso", "Viña del Mar", "Quillota", "San Antonio", "San Felipe", "Los Andes", "Quilpué", "Villa Alemana"],
+        "Región del Libertador Gral. Bernardo O'Higgins": ["Rancagua", "San Fernando", "Santa Cruz", "San Vicente", "Rengo"],
+        "Región del Maule": ["Talca", "Curicó", "Linares", "Cauquenes", "Constitución"],
+        "Región de Ñuble": ["Chillán", "San Carlos", "Quirihue"],
+        "Región del Biobío": ["Concepción", "Los Ángeles", "Talcahuano", "Coronel", "Lota", "Lebu"],
+        "Región de La Araucanía": ["Temuco", "Angol", "Villarrica", "Pucón", "Padre Las Casas"],
+        "Región de Los Ríos": ["Valdivia", "La Unión", "Río Bueno"],
+        "Región de Los Lagos": ["Puerto Montt", "Osorno", "Castro", "Ancud", "Puerto Varas"],
+        "Región de Aysén del Gral. Carlos Ibáñez del Campo": ["Coyhaique", "Puerto Aysén", "Chile Chico"],
+        "Región de Magallanes y de la Antártica Chilena": ["Punta Arenas", "Puerto Natales", "Porvenir"]
+    };
+
+    const ADQ_FIELDS = ['NombreAdq', 'RutAdq', 'EmailAdq', 'FonoAdq'];
+    const PAGO_FIELDS = ['NombrePago', 'EmailPago', 'FonoPago'];
+    const ALL_CONTACT_FIELDS = ADQ_FIELDS.concat(PAGO_FIELDS, ['Industria', 'Region', 'City', 'Comuna']);
+
+    /* ==================== INITIALIZATION ==================== */
+    document.addEventListener('DOMContentLoaded', async function() {
+        M.FormSelect.init(document.querySelectorAll('select'));
+
+        // Extract RUT and Client Context
+        const urlParams = new URLSearchParams(window.location.search);
+        let rut = urlParams.get('rut') || sessionStorage.getItem('sapRut') || '76543210-9';
+        
+        currentRut = rut.trim();
+        let rawRut = currentRut.replace(/[^0-9kK]/gi, '').toUpperCase();
+        currentCardCode = rawRut.startsWith('C') ? rawRut : 'C' + rawRut;
+
+        sessionStorage.setItem('sapRut', currentRut);
+
+        // Update UI Badges
+        document.getElementById('display-rut').textContent = currentRut;
+        document.getElementById('display-cardcode').textContent = currentCardCode;
+
+        // Extract stored client name if available
+        const storedData = sessionStorage.getItem('sapClientData');
+        if (storedData) {
+            try {
+                const parsed = JSON.parse(storedData);
+                const clientObj = parsed.data ? parsed.data : parsed;
+                if (clientObj.CardName) {
+                    document.getElementById('display-client-name').textContent = clientObj.CardName;
+                    const initials = clientObj.CardName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+                    document.getElementById('client-avatar').textContent = initials || 'AL';
+                }
+                fillForm(clientObj);
+            } catch(e) { console.error("Error leyendo datos del cliente:", e); }
+        } else {
+            document.getElementById('display-client-name').textContent = "Cliente SAP B1";
+            document.getElementById('RutEmpresa').value = currentRut;
+            M.updateTextFields();
+        }
+
+        // Setup Form Event Handlers for BP Update
+        document.getElementById('Region').addEventListener('change', function() {
+            populateComunasYCiudades(this.value);
+            validarCampos(true);
+        });
+
+        document.getElementById('sol_tipoSolicitud').addEventListener('change', function() {
+            const isRetiro = this.value === 'RETIRO';
+            document.getElementById('row-retiro-extra').style.display = isRetiro ? 'grid' : 'none';
+        });
+
+        document.getElementById('sol_contrato').addEventListener('change', function() {
+            onContratoSelect(this.value);
+        });
+
+        document.getElementById('formSolicitud').addEventListener('submit', handleSolicitudSubmit);
+
+        // Fetch Leased Equipment & Contracts from n8n
+        await fetchContratosSAP();
+    });
+
+    /* ==================== TAB SWITCHING ==================== */
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+        const targetSec = document.getElementById('sec-' + tabId);
+        const targetBtn = document.getElementById('tab-' + tabId);
+
+        if (targetSec) targetSec.classList.add('active');
+        if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    /* ==================== N8N INTEGRATION: GET CONTRATOS ==================== */
+    async function fetchContratosSAP() {
+        showLoader("Consultando equipos en SAP...");
+        try {
+            const response = await fetch(WEBHOOK_GET_CONTRATOS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut: currentRut })
+            });
+            const result = await response.json();
+            hideLoader();
+
+            if (result && result.success && Array.isArray(result.contratos) && result.contratos.length > 0) {
+                currentContratos = result.contratos;
+                renderContratos(result.contratos);
+                populateContratoSelects(result.contratos);
+            } else {
+                renderEmptyContratos(result.message || "No se encontraron equipos o contratos activos para este RUT.");
+            }
+        } catch(error) {
+            hideLoader();
+            console.error("Error al obtener contratos:", error);
+            renderEmptyContratos("No se pudo conectar con el servicio de contratos en n8n.");
+        }
+    }
+
+    function renderContratos(contratos) {
+        let totalEquipos = 0;
+        let htmlTable = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>N° Contrato</th>
+                        <th>Estado</th>
+                        <th>Ubicación / Obra</th>
+                        <th>Contacto</th>
+                        <th>Equipos en Faena</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        contratos.forEach(c => {
+            const equipos = c.VID_RTOVDCollection || [];
+            totalEquipos += equipos.length;
+
+            const eqBadges = equipos.map(eq => {
+                const code = eq.U_Dim4 || eq.U_ItemCode || 'S/N';
+                const desc = eq.U_Dscription || eq.U_ItemName || 'Equipo';
+                return `<span style="display:inline-block; background:#F1F5F9; border:1px solid #CBD5E1; padding:3px 8px; border-radius:6px; margin:2px; font-family:monospace; font-size:0.8rem;">
+                    <strong>${code}</strong> - ${desc}
+                </span>`;
+            }).join(' ');
+
+            htmlTable += `
+                <tr>
+                    <td><strong style="color:var(--navy-3);">#${c.DocNum}</strong></td>
+                    <td><span class="badge-status active">${c.U_Estado || 'ACTIVO'}</span></td>
+                    <td>${c.U_DestAddr || c.U_Dest || 'Sin especificar'}</td>
+                    <td>${c.U_Contacto || 'Principal'}</td>
+                    <td>${eqBadges || '<em>Sin detalle de equipos</em>'}</td>
+                </tr>
+            `;
+        });
+
+        htmlTable += `</tbody></table>`;
+
+        document.getElementById('dashboard-equipos-container').innerHTML = htmlTable;
+        document.getElementById('equipos-table-container').innerHTML = htmlTable;
+
+        document.getElementById('stat-equipos-count').textContent = totalEquipos;
+        document.getElementById('stat-contratos-count').textContent = contratos.length;
+        document.getElementById('badge-equipos').textContent = totalEquipos;
+    }
+
+    function renderEmptyContratos(msg) {
+        const emptyHtml = `
+            <div class="empty-state">
+                <i class="material-icons">no_equipment</i>
+                <p>${msg}</p>
+            </div>
+        `;
+        document.getElementById('dashboard-equipos-container').innerHTML = emptyHtml;
+        document.getElementById('equipos-table-container').innerHTML = emptyHtml;
+        document.getElementById('stat-equipos-count').textContent = '0';
+        document.getElementById('stat-contratos-count').textContent = '0';
+    }
+
+    function populateContratoSelects(contratos) {
+        const selectContrato = document.getElementById('sol_contrato');
+        selectContrato.innerHTML = '<option value="" disabled selected>Seleccione un contrato</option>';
+
+        contratos.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.DocNum;
+            opt.textContent = `Contrato #${c.DocNum} - Obra: ${c.U_DestAddr || c.U_Dest || 'Central'}`;
+            selectContrato.appendChild(opt);
+        });
+
+        M.FormSelect.init(selectContrato);
+    }
+
+    function onContratoSelect(docNum) {
+        const contrato = currentContratos.find(c => c.DocNum.toString() === docNum.toString());
+        const selectEquipo = document.getElementById('sol_equipo');
+        selectEquipo.innerHTML = '<option value="" disabled selected>Seleccionar equipo</option>';
+
+        if (contrato) {
+            // Auto-fill address if available
+            if (contrato.U_DestAddr) {
+                document.getElementById('sol_direccion').value = contrato.U_DestAddr;
+                M.updateTextFields();
+            }
+
+            const equipos = contrato.VID_RTOVDCollection || [];
+            equipos.forEach(eq => {
+                const opt = document.createElement('option');
+                const code = eq.U_Dim4 || eq.U_ItemCode;
+                const name = eq.U_Dscription || eq.U_ItemName || 'Equipo';
+                opt.value = code;
+                opt.dataset.nombre = name;
+                opt.dataset.familia = eq.U_Familia || '';
+                opt.dataset.sfamilia = eq.U_sFamilia || '';
+                opt.dataset.vendedor = contrato.U_Vendedor || '110';
+                opt.textContent = `${code} - ${name}`;
+                selectEquipo.appendChild(opt);
+            });
+            selectEquipo.disabled = false;
+        } else {
+            selectEquipo.disabled = true;
+        }
+        M.FormSelect.init(selectEquipo);
+    }
+
+    /* ==================== N8N INTEGRATION: SUBMIT SOLICITUD ==================== */
+    async function handleSolicitudSubmit(event) {
+        event.preventDefault();
+
+        const tipo = document.getElementById('sol_tipoSolicitud').value;
+        const contratoVal = document.getElementById('sol_contrato').value;
+        const equipoSelect = document.getElementById('sol_equipo');
+        const equipoVal = equipoSelect.value;
+        const direccionVal = document.getElementById('sol_direccion').value.trim();
+
+        if (!contratoVal || !equipoVal || !direccionVal) {
+            M.toast({html: '❌ Seleccione el contrato, equipo y la dirección.', classes: 'red darken-1'});
+            return;
+        }
+
+        const selectedOpt = equipoSelect.options[equipoSelect.selectedIndex];
+        const equipoNombre = selectedOpt.dataset.nombre || '';
+        const vendedorVal = selectedOpt.dataset.vendedor || '110';
+
+        const clientName = document.getElementById('display-client-name').textContent;
+
+        const payload = {
+            rut: currentRut,
+            cardName: clientName,
+            tipoSolicitud: tipo,
+            numInterno: equipoVal,
+            equipoCode: equipoVal,
+            equipoNombre: equipoNombre,
+            contrato: contratoVal,
+            vendedor: vendedorVal,
+            direccion: direccionVal,
+            comentarios: document.getElementById('sol_comentarios').value.trim(),
+            telefono: document.getElementById('sol_telefono').value.trim(),
+            fechaSolicitada: document.getElementById('sol_fechaSol').value,
+            ampm: document.getElementById('sol_ampm').value
+        };
+
+        showLoader("Procesando solicitud en SAP B1...");
+
+        try {
+            const response = await fetch(WEBHOOK_SOLICITUDES, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            hideLoader();
+
+            if (response.ok && result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Solicitud Generada en SAP!',
+                    html: `Su solicitud ha sido registrada correctamente.<br><b>Estado SAP:</b> ${result.SAP_Status || 'Aprobado'}`,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#F0851E'
+                });
+                document.getElementById('formSolicitud').reset();
+                M.updateTextFields();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No se pudo generar la solicitud',
+                    html: result.message || 'Error procesando la transacción en n8n.',
+                    confirmButtonText: 'Reintentar',
+                    confirmButtonColor: '#2F7FC4'
+                });
+            }
+        } catch(error) {
+            hideLoader();
+            console.error("Error al enviar solicitud:", error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Conexión',
+                text: 'No pudimos conectar con el servidor n8n.',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#2F7FC4'
+            });
+        }
+    }
+
+    /* ==================== FORM HELPERS & VALIDATION ==================== */
+    function formatPhoneValue(val) {
+        if (!val) return '';
+        let clean = val.trim().replace(/[\s\-()]/g, '');
+        if (/^9\d{8}$/.test(clean)) return '+56' + clean;
+        if (/^569\d{8}$/.test(clean)) return '+' + clean;
+        if (clean.startsWith('+56')) return clean;
+        return clean.startsWith('56') ? '+' + clean : '+56' + clean;
+    }
+
+    function norm(s) {
+        return (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function inferRegion(comuna, ciudad) {
+        const objetivos = [comuna, ciudad].filter(Boolean);
+        for (const t of objetivos) {
+            for (const region in ChileData) {
+                if ((ChileData[region] || []).some(c => norm(c) === norm(t))) return region;
+            }
+            for (const region in ChileCities) {
+                if ((ChileCities[region] || []).some(c => norm(c) === norm(t))) return region;
+            }
+        }
+        return '';
+    }
+
+    function populateComunasYCiudades(regionNombre, comunaSeleccionada = '', ciudadSeleccionada = '') {
+        const comunaSelect = document.getElementById('Comuna');
+        const citySelect = document.getElementById('City');
+
+        const comunas = ChileData[regionNombre] || [];
+        comunaSelect.innerHTML = '<option value="" disabled selected>Seleccione una comuna</option>';
+        let comunaMatch = '';
+        comunas.forEach(comuna => {
+            const t = comuna.trim();
+            let opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            comunaSelect.appendChild(opt);
+            if (norm(t) === norm(comunaSeleccionada)) comunaMatch = t;
+        });
+        if (comunaMatch) comunaSelect.value = comunaMatch;
+        M.FormSelect.init(comunaSelect);
+
+        const ciudades = ChileCities[regionNombre] || [];
+        citySelect.innerHTML = '<option value="" disabled selected>Seleccione una ciudad</option>';
+        let ciudadMatch = '';
+        ciudades.forEach(ciudad => {
+            const t = ciudad.trim();
+            let opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            citySelect.appendChild(opt);
+            if (norm(t) === norm(ciudadSeleccionada)) ciudadMatch = t;
+        });
+        if (ciudadMatch) citySelect.value = ciudadMatch;
+        M.FormSelect.init(citySelect);
+    }
+
+    function fillForm(data) {
+        document.getElementById('RazonSocial').value = data.CardName || '';
+        document.getElementById('Industria').value = data.Industria || '';
+        
+        if (data.Direccion) {
+            document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
+
+            let comunaDetectada = data.Direccion.Comuna || '';
+            let ciudadDetectada = data.Direccion.Ciudad || '';
+            let regionDetectada = data.Direccion.Region || '';
+
+            if (!regionDetectada) regionDetectada = inferRegion(comunaDetectada, ciudadDetectada);
+
+            if (!comunaDetectada && ciudadDetectada && regionDetectada) {
+                const comunasReg = ChileData[regionDetectada] || [];
+                const m = comunasReg.find(c => norm(c) === norm(ciudadDetectada));
+                if (m) comunaDetectada = m;
+            }
+
+            document.getElementById('Region').value = regionDetectada;
+            populateComunasYCiudades(regionDetectada, comunaDetectada, ciudadDetectada);
+        }
+
+        if (data.Contactos && data.Contactos.Adquisiciones) {
+            document.getElementById('NombreAdq').value = data.Contactos.Adquisiciones.Nombre || '';
+            document.getElementById('RutAdq').value = data.Contactos.Adquisiciones.Rut || '';
+            document.getElementById('EmailAdq').value = data.Contactos.Adquisiciones.Email || '';
+            document.getElementById('FonoAdq').value = formatPhoneValue(data.Contactos.Adquisiciones.Fono || '');
+        }
+        if (data.Contactos && data.Contactos.PagoProveedores) {
+            document.getElementById('NombrePago').value = data.Contactos.PagoProveedores.Nombre || '';
+            document.getElementById('EmailPago').value = data.Contactos.PagoProveedores.Email || '';
+            document.getElementById('FonoPago').value = formatPhoneValue(data.Contactos.PagoProveedores.Fono || '');
+        }
+
+        M.updateTextFields();
+        M.FormSelect.init(document.querySelectorAll('select'));
+        validarCampos(true); 
+    }
+
+    function validarCampos(isInitialLoad = false) {
+        let formIsValid = true;
+        ALL_CONTACT_FIELDS.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if (!input) return;
+            const value = input.value ? input.value.trim() : '';
+            const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+            
+            if (value === '') {
+                container.classList.remove('valid', 'invalid');
+                formIsValid = false;
+                return; 
+            }
+            
+            let isFormatValid = true;
+            if (fieldId === 'RutAdq' && !validaRut(value)) isFormatValid = false;
+            if ((fieldId === 'EmailAdq' || fieldId === 'EmailPago') && !isValidEmail(value)) isFormatValid = false;
+            if ((fieldId === 'FonoAdq' || fieldId === 'FonoPago') && !isValidPhone(value)) isFormatValid = false;
+            
+            if (!isFormatValid) {
+                formIsValid = false;
+                if (!isInitialLoad) { container.classList.remove('valid'); container.classList.add('invalid'); }
+            } else {
+                if (!isInitialLoad) { container.classList.remove('invalid'); container.classList.add('valid'); }
+            }
+        });
+        return formIsValid;
+    }
+
+    document.getElementById('myForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        ALL_CONTACT_FIELDS.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if(!input) return;
+            const value = input.value ? input.value.trim() : '';
+            const container = input.tagName === 'SELECT' ? input.closest('.select-wrapper') : input;
+            if(value === '') { container.classList.add('invalid'); }
+        });
+
+        if (!validarCampos(false)) {
+            M.toast({html: '❌ Revise los campos obligatorios o inválidos.', classes: 'red darken-1'});
+            return;
+        }
+
+        const formData = new FormData(event.target);
+        const dataObject = {};
+        formData.forEach((value, key) => { dataObject[key] = value.trim(); });
+        dataObject.CardCode = currentCardCode;
+
+        showLoader("Enviando actualización a SAP...");
+        try {
+            const response = await fetch(WEBHOOK_UPDATE_BP, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataObject)
+            });
+            const result = await response.json();
+            hideLoader();
+
+            if (response.ok && result.success) {
+                M.toast({html: '✅ Datos actualizados exitosamente en SAP B1', classes: 'green darken-1'});
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Actualización Exitosa!',
+                    text: 'Los datos de su empresa han sido actualizados en SAP Business One.',
+                    confirmButtonColor: '#F0851E'
+                });
+            } else {
+                const sapMsg = result.detail || result.message || 'No se pudo actualizar en SAP.';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No pudimos guardar tus datos',
+                    html: sapMsg,
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#2F7FC4'
+                });
+            }
+        } catch(e) {
+            hideLoader();
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de conexión',
+                text: 'No pudimos conectar con el servidor n8n.',
+                confirmButtonText: 'Reintentar',
+                confirmButtonColor: '#2F7FC4'
+            });
+        }
+    });
+
+    function showLoader(msg = "Cargando...") {
+        document.getElementById('loaderText').innerText = msg;
+        document.getElementById('loader').style.display = 'flex';
+    }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+    
+    function validaRut(rutCompleto) {
+        if (!rutCompleto) return false;
+        rutCompleto = rutCompleto.replace(/\./g, "").replace("-", "‐");
+        if (!/^[0-9]+‐[0-9kK]{1}$/.test(rutCompleto)) return false;
+        const tmp = rutCompleto.split('‐');
+        return (dv(tmp[0]) == (tmp[1].toLowerCase() == 'k' ? 'k' : tmp[1]));
+    }
+    
+    function dv(T) {
+        var M = 0, S = 1;
+        for (; T; T = Math.floor(T / 10)) { S = (S + T % 10 * (9 - M++ % 6)) % 11; }
+        return S ? S - 1 : 'k';
+    }
+    function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+    function isValidPhone(phone) {
+        if (!phone) return false;
+        const limpio = phone.trim().replace(/[\s\-()]/g, '');
+        return /^\+56(9\d{8}|[2-8]\d{7})$/.test(limpio);
+    }
+</script>
+</body>
+</html>
