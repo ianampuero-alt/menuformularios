@@ -190,7 +190,7 @@
 <main class="container-content">
 
     <div class="form-eyebrow">Portal de Clientes · ALO Group</div>
-    <h4>Resumen General & Situación Comercial</h4>
+    <h4>Resumen General &amp; Situación Comercial</h4>
     <p class="form-sub">Consulte el estado financiero de su cuenta, sus equipos en faena y el historial de solicitudes técnicas.</p>
 
     <!-- METRICS & STATS CARDS -->
@@ -246,7 +246,7 @@
         </div>
     </div>
 
-    <!-- ACCORDEÓN 2: HISTORIAL DE SOLICITUDES Y OM (¡AQUÍ ESTÁ LO QUE FALTABA!) -->
+    <!-- ACCORDEÓN 2: HISTORIAL DE SOLICITUDES Y OM -->
     <div class="collapsible-custom">
         <div class="collapsible-header-custom" id="omHeader" onclick="toggleAccordion('omBody', 'omHeader', 'omAccordionIcon')">
             <div class="title-group">
@@ -294,9 +294,9 @@
 
 <script>
     /* ==================== WEBHOOK ENDPOINTS ==================== */
-    const WEBHOOK_GET_CONTRATOS = 'https://alogroup.app.n8n.cloud/webhook/sap/get-contratos-flota';
-    const WEBHOOK_GET_FINANZAS    = 'https://alogroup.app.n8n.cloud/webhook/sap/get-finanzas';
-    const WEBHOOK_GET_SOLICITUDES = 'https://alogroup.app.n8n.cloud/webhook/sap/get-solicitudes';
+    const WEBHOOK_GET_CONTRATOS   = 'https://alogroup.app.n8n.cloud/webhook/get-contratos-flota';
+    const WEBHOOK_GET_FINANZAS    = 'https://alogroup.app.n8n.cloud/webhook/get-finanzas';
+    const WEBHOOK_GET_SOLICITUDES = 'https://alogroup.app.n8n.cloud/webhook/get-solicitudes';
 
     /* Global State */
     let currentRut = '';
@@ -566,7 +566,7 @@
                     <td style="text-align:right; font-weight:700; color:${isVencida ? 'var(--err)' : 'var(--char)'}">$${saldoPendiente.toLocaleString('es-CL')}</td>
                 </tr>`;
         });
-        htmlTable += `</tbody>mtable>`;
+        htmlTable += `</tbody></table>`;
         document.getElementById('finanzas-table-container').innerHTML = htmlTable;
         document.getElementById('stat-saldo-vencido').textContent = `$${saldoVencido.toLocaleString('es-CL')}`;
         document.getElementById('stat-facturas-pendientes').textContent = facturasPendientes;
