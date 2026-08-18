@@ -1,35 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nueva Cotización · ALO Group</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --navy-1: #0F161E;
             --navy-2: #16232E;
             --navy-3: #22374A;
-            --azure:  #3E8ED0;
-            --azure-2:#2F7FC4;
-            --azure-3:#57A6E8;
-            --amber:  #F0851E;
+            --azure: #3E8ED0;
+            --azure-2: #2F7FC4;
+            --azure-3: #57A6E8;
+            --amber: #F0851E;
 
-            --char:   #0F1A24;
-            --paper:  #F4F7FA;
-            --paper-2:#FFFFFF;
-            --line:   #DDE5EE;
-            --muted:  #6B7A8C;
-            --ok:     #2E7D46;
-            --err:    #C0341D;
+            --char: #0F1A24;
+            --paper: #F4F7FA;
+            --paper-2: #FFFFFF;
+            --line: #DDE5EE;
+            --muted: #6B7A8C;
+            --ok: #2E7D46;
+            --err: #C0341D;
 
             --display: 'Bricolage Grotesque', system-ui, sans-serif;
             --body: 'Inter', system-ui, sans-serif;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: var(--body);
             background: var(--paper);
@@ -50,6 +58,7 @@
             justify-content: space-between;
             border-bottom: 2px solid var(--navy-3);
         }
+
         .navbar-brand {
             display: flex;
             align-items: center;
@@ -60,10 +69,13 @@
             color: #fff;
             text-decoration: none;
         }
-        .navbar-brand span { color: var(--azure-3); }
+
+        .navbar-brand span {
+            color: var(--azure-3);
+        }
 
         .back-nav {
-            color: rgba(255,255,255,0.8);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             font-size: 0.9rem;
             font-weight: 600;
@@ -72,7 +84,10 @@
             gap: 6px;
             transition: color 0.2s;
         }
-        .back-nav:hover { color: var(--azure-3); }
+
+        .back-nav:hover {
+            color: var(--azure-3);
+        }
 
         /* Contenedor Principal */
         .container {
@@ -93,12 +108,18 @@
             position: relative;
             overflow: hidden;
         }
+
         .hero-header::after {
-            content: ""; position: absolute;
-            width: 200px; height: 200px; right: -50px; bottom: -80px;
-            background: radial-gradient(circle, rgba(62,142,208,.35) 0%, rgba(62,142,208,0) 70%);
+            content: "";
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            right: -50px;
+            bottom: -80px;
+            background: radial-gradient(circle, rgba(62, 142, 208, .35) 0%, rgba(62, 142, 208, 0) 70%);
             pointer-events: none;
         }
+
         .eyebrow {
             font-size: 0.75rem;
             letter-spacing: 2px;
@@ -107,14 +128,16 @@
             font-weight: 700;
             margin-bottom: 6px;
         }
+
         .hero-header h1 {
             font-family: var(--display);
             font-size: 1.75rem;
             font-weight: 700;
             margin-bottom: 4px;
         }
+
         .hero-header p {
-            color: rgba(234,242,251,.75);
+            color: rgba(234, 242, 251, .75);
             font-size: 0.92rem;
         }
 
@@ -125,7 +148,7 @@
             border-top: none;
             border-radius: 0 0 16px 16px;
             padding: 32px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
             margin-bottom: 40px;
         }
 
@@ -138,9 +161,15 @@
             padding-bottom: 8px;
             border-bottom: 1px solid var(--line);
         }
-        .field-group-title:first-of-type { margin-top: 0; }
 
-        .field { margin-bottom: 20px; }
+        .field-group-title:first-of-type {
+            margin-top: 0;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
         .field label {
             display: block;
             font-size: 0.82rem;
@@ -149,7 +178,9 @@
             color: var(--char);
             margin-bottom: 8px;
         }
-        .field input, .field select {
+
+        .field input,
+        .field select {
             width: 100%;
             font-family: var(--body);
             font-size: 0.98rem;
@@ -160,12 +191,17 @@
             color: var(--char);
             transition: border-color .2s, box-shadow .2s;
         }
-        .field input:focus, .field select:focus {
+
+        .field input:focus,
+        .field select:focus {
             outline: none;
             border-color: var(--azure);
-            box-shadow: 0 0 0 4px rgba(62,142,208,.15);
+            box-shadow: 0 0 0 4px rgba(62, 142, 208, .15);
         }
-        .field input::placeholder { color: #A9B6C4; }
+
+        .field input::placeholder {
+            color: #A9B6C4;
+        }
 
         .row {
             display: grid;
@@ -186,10 +222,27 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        .toggle-box:hover { border-color: var(--azure); }
-        .toggle-info { display: flex; flex-direction: column; }
-        .toggle-title { font-weight: 600; font-size: 0.92rem; color: var(--navy-1); }
-        .toggle-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+        .toggle-box:hover {
+            border-color: var(--azure);
+        }
+
+        .toggle-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toggle-title {
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: var(--navy-1);
+        }
+
+        .toggle-desc {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
 
         /* Switch UI */
         .switch {
@@ -199,23 +252,42 @@
             height: 24px;
             flex-shrink: 0;
         }
-        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
         .slider {
-            position: absolute; cursor: pointer; inset: 0;
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
             background-color: #C0CEDB;
             transition: .25s;
             border-radius: 24px;
         }
+
         .slider:before {
-            position: absolute; content: "";
-            height: 18px; width: 18px; left: 3px; bottom: 3px;
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
             background-color: white;
             transition: .25s;
             border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
-        input:checked + .slider { background-color: var(--azure-2); }
-        input:checked + .slider:before { transform: translateX(20px); }
+
+        input:checked+.slider {
+            background-color: var(--azure-2);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
 
         /* Botón de Acción */
         .btn-submit {
@@ -235,51 +307,110 @@
             gap: 10px;
             margin-top: 12px;
             transition: transform .12s ease, box-shadow .2s, background .2s;
-            box-shadow: 0 6px 18px rgba(47,127,196,.35);
+            box-shadow: 0 6px 18px rgba(47, 127, 196, .35);
         }
+
         .btn-submit:hover:not(:disabled) {
             background: var(--azure);
             transform: translateY(-1px);
-            box-shadow: 0 10px 24px rgba(62,142,208,.45);
+            box-shadow: 0 10px 24px rgba(62, 142, 208, .45);
         }
-        .btn-submit:disabled { opacity: .65; cursor: not-allowed; box-shadow: none; }
+
+        .btn-submit:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
 
         /* Toast notifications */
         #toast-wrap {
-            position: fixed; z-index: 999; bottom: 24px; left: 50%;
-            transform: translateX(-50%); display: flex; flex-direction: column;
-            gap: 10px; width: min(92%, 400px);
+            position: fixed;
+            z-index: 999;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: min(92%, 400px);
         }
+
         .toast {
-            padding: 14px 18px; border-radius: 12px; color: #fff;
-            font-size: .92rem; font-weight: 500;
-            box-shadow: 0 10px 30px rgba(0,0,0,.18);
+            padding: 14px 18px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: .92rem;
+            font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
             animation: fade .3s ease both;
         }
-        .toast.ok  { background: var(--ok); }
-        .toast.err { background: var(--err); }
-        @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        .toast.ok {
+            background: var(--ok);
+        }
+
+        .toast.err {
+            background: var(--err);
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
 
         .spin {
-            width: 18px; height: 18px; border-radius: 50%;
-            border: 2.5px solid rgba(255,255,255,.4);
-            border-top-color: #fff; animation: rot .8s linear infinite;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2.5px solid rgba(255, 255, 255, .4);
+            border-top-color: #fff;
+            animation: rot .8s linear infinite;
         }
-        @keyframes rot { to { transform: rotate(360deg); } }
+
+        @keyframes rot {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         footer {
-            text-align: center; padding: 24px; font-size: 0.85rem;
-            color: var(--muted); border-top: 1px solid var(--line); margin-top: auto;
+            text-align: center;
+            padding: 24px;
+            font-size: 0.85rem;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            margin-top: auto;
         }
 
         @media (max-width: 600px) {
-            .container { padding: 0 12px; margin: 16px auto; }
-            .hero-header { padding: 20px 24px; }
-            .form-card { padding: 20px; }
-            .row { grid-template-columns: 1fr; gap: 0; }
+            .container {
+                padding: 0 12px;
+                margin: 16px auto;
+            }
+
+            .hero-header {
+                padding: 20px 24px;
+            }
+
+            .form-card {
+                padding: 20px;
+            }
+
+            .row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <header class="navbar">
@@ -292,7 +423,7 @@
     </header>
 
     <main class="container">
-        
+
         <div class="hero-header">
             <div class="eyebrow">Gestión de Arriendos</div>
             <h1>Nueva Cotización (VID_RTCOT)</h1>
@@ -301,7 +432,7 @@
 
         <div class="form-card">
             <form id="cotizacion-form" novalidate>
-                
+
                 <div class="field-group-title">1. Datos de Cabecera</div>
 
                 <div class="field">
@@ -324,6 +455,9 @@
                     <div class="field">
                         <label for="descP">Descuento (%)</label>
                         <input id="descP" name="descP" type="number" min="0" max="100" value="0" step="0.1">
+                        <span style="display:block; margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
+                            Sujeto a límite autorizado por usuario y categoría de cliente en SAP.
+                        </span>
                     </div>
                 </div>
 
@@ -391,11 +525,11 @@
         document.getElementById('cotizacion-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit');
-            
+
             const cardCode = document.getElementById('cardCode').value.trim();
             const itemCode = document.getElementById('itemCode').value.trim();
-            const durQty   = parseInt(document.getElementById('durQty').value, 10);
-            const descP    = parseFloat(document.getElementById('descP').value) || 0;
+            const durQty = parseInt(document.getElementById('durQty').value, 10);
+            const descP = parseFloat(document.getElementById('descP').value) || 0;
 
             if (!cardCode || !itemCode || !durQty) {
                 toast('Por favor completa todos los campos requeridos.', false);
@@ -437,4 +571,5 @@
         });
     </script>
 </body>
+
 </html>
