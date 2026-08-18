@@ -49,7 +49,7 @@
         .navbar {
             background: var(--navy-1);
             color: #fff;
-            padding: 16px 32px;
+            padding: 14px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -59,15 +59,27 @@
         .navbar-brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             font-family: var(--display);
-            font-weight: 800;
-            font-size: 1.3rem;
+            font-weight: 700;
+            font-size: 1.15rem;
             color: #fff;
         }
 
-        .navbar-brand span {
+        .navbar-logo {
+            height: 38px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .brand-divider {
+            color: var(--navy-3);
+            font-weight: 300;
+        }
+
+        .brand-title {
             color: var(--azure-3);
+            letter-spacing: 0.3px;
         }
 
         .user-nav {
@@ -178,7 +190,7 @@
             font-weight: 500;
         }
 
-        /* Action Cards Grid (Los 4 Módulos) */
+        /* Action Cards Grid */
         .section-title {
             font-family: var(--display);
             font-size: 1.3rem;
@@ -261,7 +273,6 @@
                 display: none;
             }
 
-            /* Ocultar nombre en móvil para ahorrar espacio */
             .welcome-hero {
                 padding: 24px;
             }
@@ -273,7 +284,13 @@
 
     <header class="navbar">
         <div class="navbar-brand">
-            <span>ALO GROUP</span> · Portal Comercial
+            <!-- Reemplaza la ruta del src por la de tu archivo de logo real -->
+            <div class="logo">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4Q...(base64 del logo)..." alt="ALO Group">
+            </div>
+            <span>ALO GROUP</span>
+            <span class="brand-divider">|</span>
+            <span class="brand-title">Portal Comercial</span>
         </div>
         <div class="user-nav">
             <div class="user-info">
@@ -290,7 +307,6 @@
             <p>Accede a la gestión de arriendos, ventas y oportunidades desde tu plataforma unificada.</p>
         </div>
 
-        <!-- Métricas (En el futuro se conectarán a SAP / n8n) -->
         <div class="metrics-grid">
             <div class="metric-card">
                 <div class="title">Cotizaciones Activas</div>
@@ -311,25 +327,19 @@
 
         <h2 class="section-title">Módulos Operativos</h2>
 
-        <!-- GRILLA DE LOS 4 MÓDULOS -->
         <div class="actions-grid">
-
-            <!-- Módulo 1: Cotización de Arriendo -->
-            <!-- NOTA: Cambia el "#" por la URL de tu app Flask, ej: "http://tu-servidor-flask:5000/cotizacion" -->
             <a href="cotizacion.html" class="action-card">
                 <h3>Cotización de Arriendo</h3>
                 <p>Crea nuevas cotizaciones de equipos ALO Rental, incluyendo seguros y alistamiento (VID_RTCOT).</p>
                 <div class="badge">Arriendos</div>
             </a>
 
-            <!-- Módulo 2: Contrato de Arriendo -->
             <a href="#" class="action-card" onclick="alert('Redirigiendo a Generación de Contratos (VID_RTOV)...')">
                 <h3>Contrato de Arriendo</h3>
                 <p>Genera contratos formales de arriendo a partir de cotizaciones previas o desde cero (VID_RTOV).</p>
                 <div class="badge">Arriendos</div>
             </a>
 
-            <!-- Módulo 3: Oportunidades -->
             <a href="#" class="action-card sales" onclick="alert('Redirigiendo a Oportunidades (SAP)...')">
                 <h3>Oportunidades</h3>
                 <p>Gestiona tu pipeline comercial, registra nuevas oportunidades de negocio y haz seguimiento a
@@ -337,13 +347,11 @@
                 <div class="badge">CRM / Ventas</div>
             </a>
 
-            <!-- Módulo 4: Oferta de Ventas -->
             <a href="#" class="action-card sales" onclick="alert('Redirigiendo a Oferta de Ventas (SAP)...')">
                 <h3>Oferta de Ventas</h3>
                 <p>Crea cotizaciones directas para la venta de equipos, repuestos o servicios (Sales Quotation).</p>
                 <div class="badge">Venta Directa</div>
             </a>
-
         </div>
     </main>
 
@@ -352,25 +360,20 @@
     </footer>
 
     <script>
-        // Validar sesión al cargar la página
         document.addEventListener('DOMContentLoaded', () => {
             const userEmail = sessionStorage.getItem('alo_user_email');
             const userName = sessionStorage.getItem('alo_user_name') || sessionStorage.getItem('alo_sales_person') || userEmail;
             const userRole = sessionStorage.getItem('alo_user_role') || 'Comercial';
 
-            // Redirigir a login si no hay sesión activa
             if (!userEmail) {
-                // Descomenta esto en producción si quieres bloquear el acceso sin login
                 // window.location.href = 'index.html'; 
             }
 
-            // Mostrar información en pantalla
             document.getElementById('user-name-display').textContent = userName || 'Usuario de Prueba';
             document.getElementById('user-role-display').textContent = 'Rol: ' + userRole;
             document.getElementById('welcome-title').textContent = '¡Hola, ' + (userName || 'Vendedor') + '!';
         });
 
-        // Función para cerrar sesión
         function logout() {
             sessionStorage.clear();
             window.location.href = 'index.html';
