@@ -155,7 +155,7 @@
             font-weight: 500;
         }
 
-        /* Action Cards Grid */
+        /* Action Cards Grid (Los 4 Módulos) */
         .section-title {
             font-family: var(--display);
             font-size: 1.3rem;
@@ -165,7 +165,7 @@
         }
         .actions-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
         }
         .action-card {
@@ -177,7 +177,8 @@
             cursor: pointer;
             text-decoration: none;
             color: inherit;
-            display: block;
+            display: flex;
+            flex-direction: column;
         }
         .action-card:hover {
             transform: translateY(-3px);
@@ -186,7 +187,7 @@
         }
         .action-card h3 {
             font-family: var(--display);
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             margin-bottom: 8px;
             color: var(--navy-2);
         }
@@ -194,6 +195,22 @@
             font-size: 0.9rem;
             color: var(--muted);
             line-height: 1.4;
+            flex-grow: 1;
+        }
+        .action-card .badge {
+            margin-top: 16px;
+            align-self: flex-start;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(62,142,208,0.1);
+            color: var(--azure-2);
+        }
+        
+        .action-card.sales .badge {
+            background: rgba(240,133,30,0.1);
+            color: var(--amber);
         }
 
         /* Footer */
@@ -204,6 +221,12 @@
             color: var(--muted);
             border-top: 1px solid var(--line);
             margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 16px 20px; }
+            .user-info { display: none; } /* Ocultar nombre en móvil para ahorrar espacio */
+            .welcome-hero { padding: 24px; }
         }
     </style>
 </head>
@@ -225,41 +248,62 @@
     <main class="container">
         <div class="welcome-hero">
             <h1 id="welcome-title">Bienvenido al Panel Comercial</h1>
-            <p>Accede a la gestión de clientes, solicitudes y cotizaciones desde tu plataforma unificada.</p>
+            <p>Accede a la gestión de arriendos, ventas y oportunidades desde tu plataforma unificada.</p>
         </div>
 
+        <!-- Métricas (En el futuro se conectarán a SAP / n8n) -->
         <div class="metrics-grid">
             <div class="metric-card">
-                <div class="title">Solicitudes Activas</div>
+                <div class="title">Cotizaciones Activas</div>
                 <div class="value">12</div>
                 <div class="desc">3 pendientes de revisión</div>
             </div>
             <div class="metric-card">
-                <div class="title">Clientes Asignados</div>
-                <div class="value">28</div>
-                <div class="desc">Actualizado hoy</div>
+                <div class="title">Contratos de Arriendo</div>
+                <div class="value">8</div>
+                <div class="desc">Generados este mes</div>
             </div>
             <div class="metric-card">
-                <div class="title">Cotizaciones del Mes</div>
-                <div class="value">15</div>
-                <div class="desc">+12% vs mes anterior</div>
+                <div class="title">Oportunidades (Pipeline)</div>
+                <div class="value">5</div>
+                <div class="desc">En etapa de negociación</div>
             </div>
         </div>
 
-        <h2 class="section-title">Módulos de Gestión</h2>
+        <h2 class="section-title">Módulos Operativos</h2>
+        
+        <!-- GRILLA DE LOS 4 MÓDULOS -->
         <div class="actions-grid">
-            <div class="action-card" onclick="alert('Módulo de Gestión de Clientes en desarrollo')">
-                <h3>Gestión de Clientes</h3>
-                <p>Consulta la información técnica y de contacto de tus clientes asignados en SAP.</p>
-            </div>
-            <div class="action-card" onclick="alert('Módulo de Cotizaciones en desarrollo')">
-                <h3>Cotizaciones y Pedidos</h3>
-                <p>Crea y revisa el estado de solicitudes de equipos y servicios ALO Rental.</p>
-            </div>
-            <div class="action-card" onclick="alert('Módulo de Reportes en desarrollo')">
-                <h3>Reportes Comerciales</h3>
-                <p>Visualiza métricas de rendimiento, estados de cuenta y resúmenes de zona.</p>
-            </div>
+            
+            <!-- Módulo 1: Cotización de Arriendo -->
+            <!-- NOTA: Cambia el "#" por la URL de tu app Flask, ej: "http://tu-servidor-flask:5000/cotizacion" -->
+            <a href="#" class="action-card" onclick="alert('Redirigiendo a Formulario de Cotización (VID_RTCOT)...')">
+                <h3>Cotización de Arriendo</h3>
+                <p>Crea nuevas cotizaciones de equipos ALO Rental, incluyendo seguros, alistamiento y fletes (VID_RTCOT).</p>
+                <div class="badge">Arriendos</div>
+            </a>
+
+            <!-- Módulo 2: Contrato de Arriendo -->
+            <a href="#" class="action-card" onclick="alert('Redirigiendo a Generación de Contratos (VID_RTOV)...')">
+                <h3>Contrato de Arriendo</h3>
+                <p>Genera contratos formales de arriendo a partir de cotizaciones previas o desde cero (VID_RTOV).</p>
+                <div class="badge">Arriendos</div>
+            </a>
+
+            <!-- Módulo 3: Oportunidades -->
+            <a href="#" class="action-card sales" onclick="alert('Redirigiendo a Oportunidades (SAP)...')">
+                <h3>Oportunidades</h3>
+                <p>Gestiona tu pipeline comercial, registra nuevas oportunidades de negocio y haz seguimiento a clientes.</p>
+                <div class="badge">CRM / Ventas</div>
+            </a>
+
+            <!-- Módulo 4: Oferta de Ventas -->
+            <a href="#" class="action-card sales" onclick="alert('Redirigiendo a Oferta de Ventas (SAP)...')">
+                <h3>Oferta de Ventas</h3>
+                <p>Crea cotizaciones directas para la venta de equipos, repuestos o servicios (Sales Quotation).</p>
+                <div class="badge">Venta Directa</div>
+            </a>
+
         </div>
     </main>
 
@@ -276,14 +320,14 @@
 
             // Redirigir a login si no hay sesión activa
             if (!userEmail) {
-                window.location.href = 'index.html';
-                return;
+                // Descomenta esto en producción si quieres bloquear el acceso sin login
+                // window.location.href = 'index.html'; 
             }
 
             // Mostrar información en pantalla
-            document.getElementById('user-name-display').textContent = userName;
+            document.getElementById('user-name-display').textContent = userName || 'Usuario de Prueba';
             document.getElementById('user-role-display').textContent = 'Rol: ' + userRole;
-            document.getElementById('welcome-title').textContent = '¡Hola, ' + userName + '!';
+            document.getElementById('welcome-title').textContent = '¡Hola, ' + (userName || 'Vendedor') + '!';
         });
 
         // Función para cerrar sesión
