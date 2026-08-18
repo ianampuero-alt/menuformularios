@@ -454,9 +454,10 @@
                     </div>
                     <div class="field">
                         <label for="descP">Descuento (%)</label>
-                        <input id="descP" name="descP" type="number" min="0" max="99" value="0" step="0.1">
+                        <input id="descP" name="descP" type="text" inputmode="numeric" maxlength="2" value="0"
+                            placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 2);">
                         <span style="display:block; margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
-                            Sujeto a límite autorizado por usuario y categoría de cliente en SAP.
+                            Máximo 2 dígitos (0 a 99%). Sujeto a límite autorizado en SAP.
                         </span>
                     </div>
                 </div>
