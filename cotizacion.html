@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotización de Arriendo · ALO Group</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy-1: #0F161E; --azure: #3E8ED0; --paper: #F4F7FA; --line: #DDE5EE; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--paper); padding: 16px; color: #0F1A24; }
+        .card { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 24px; border: 1px solid var(--line); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.5rem; margin-bottom: 20px; color: var(--navy-1); }
+        .field { margin-bottom: 16px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 12px; border: 1.5px solid var(--line); border-radius: 10px; font-size: 0.95rem; }
+        input:focus { outline: none; border-color: var(--azure); }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .checkbox-group input { width: auto; }
+        .btn { width: 100%; background: var(--azure); color: #fff; font-weight: 700; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 1rem; margin-top: 12px; }
+        .btn:disabled { opacity: 0.6; }
+        .back-link { display: inline-block; margin-bottom: 16px; color: var(--azure); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <a href="dashboard.html" class="back-link">← Volver al Panel</a>
+        <h2>Nueva Cotización (VID_RTCOT)</h2>
+
+        <form id="cotizacion-form">
+            <div class="field">
+                <label for="cardCode">Código Cliente (SAP)</label>
+                <input id="cardCode" name="cardCode" type="text" placeholder="Ej: C76543210-9" required>
+            </div>
+
+            <div class="field">
+                <label for="itemCode">Código de Equipo (CO%)</label>
+                <input id="itemCode" name="itemCode" type="text" placeholder="Ej: COP010203" required>
+            </div>
+
+            <div class="row">
+                <div class="field">
+                    <label for="durQty">Días de Arriendo</label>
+                    <input id="durQty" name="durQty" type="number" min="1" value="1" required>
+                </div>
+                <div class="field">
+                    <label for="descP">Descuento (%)</label>
+                    <input id="descP" name="descP" type="number" min="0" max="100" value="0">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Adicionales</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="incSeguro" checked>
+                    <label for="incSeguro">Incluir Seguro (SEG-DEF)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="incAlistamiento" checked>
+                    <label for="incAlistamiento">Incluir Alistamiento (zALI-DEF)</label>
+                </div>
+            </div>
+
+            <button type="submit" id="btn-submit" class="btn">Crear Cotización en SAP</button>
+        </form>
+    </div>
+
+    <script>
+        // URL de tu webhook de n8n para crear la cotización
+        const WEBHOOK_CREAR_COTIZACION = 'https://alogroup.app.n8n.cloud/webhook/sap/crearCotizacion';
+
+        document.getElementById('cotizacion-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.textContent = 'Creando en SAP...';
+
+            const payload = {
+                userEmail: sessionStorage.getItem('alo_user_email') || 'vendedor@alo-group.com',
+                cardCode: document.getElementById('cardCode').value.trim(),
+                itemCode: document.getElementById('itemCode').value.trim(),
+                durQty: parseInt(document.getElementById('durQty').value, 10),
+                descP: parseFloat(document.getElementById('descP').value) || 0,
+                incSeguro: document.getElementById('incSeguro').checked,
+                incAlistamiento: document.getElementById('incAlistamiento').checked
+            };
+
+            try {
+                const response = await fetch(WEBHOOK_CREAR_COTIZACION, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                btn.disabled = false;
+                btn.textContent = 'Crear Cotización en SAP';
+
+                if (response.ok && result.success) {
+                    alert(`¡Cotización creada con éxito!\nDocEntry: ${result.docEntry}\nDocNum: ${result.docNum}`);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('Error al crear la cotización: ' + (result.message || 'Error desconocido'));
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = 'Crear Cotización en SAP';
+                alert('No se pudo conectar con el servidor.');
+            }
+        });
+    </script>
+</body>
+</html>
