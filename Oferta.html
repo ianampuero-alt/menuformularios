@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oferta de Ventas · ALO Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy-1: #0F161E;
+            --navy-2: #16232E;
+            --navy-3: #22374A;
+            --azure: #3E8ED0;
+            --azure-2: #2F7FC4;
+            --azure-3: #57A6E8;
+            --amber: #F0851E;
+            --char: #0F1A24;
+            --paper: #F4F7FA;
+            --paper-2: #FFFFFF;
+            --line: #DDE5EE;
+            --muted: #6B7A8C;
+            --ok: #2E7D46;
+            --err: #C0341D;
+            --display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--body);
+            background: var(--paper);
+            color: var(--char);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== HEADER (solo logo + logout, igual al dashboard) ===== */
+        .navbar {
+            background: var(--navy-1);
+            color: #fff;
+            height: 64px;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--navy-3);
+        }
+        .navbar-brand { display: flex; align-items: center; gap: 12px; height: 100%; }
+        .logo { display: flex; align-items: center; height: 100%; }
+        .logo img { height: 40px; width: auto; object-fit: contain; display: block; }
+        .brand-title {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--azure-3);
+            letter-spacing: 0.3px;
+        }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .btn-back {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-logout {
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { background: var(--err); border-color: var(--err); }
+
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 32px auto;
+            padding: 0 24px;
+            flex: 1;
+        }
+        .page-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .page-head h1 {
+            font-family: var(--display);
+            font-size: 1.7rem;
+            color: var(--navy-1);
+            margin-bottom: 4px;
+        }
+        .page-head p { color: var(--muted); font-size: 0.95rem; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            font-family: var(--body);
+            font-size: 0.92rem;
+            font-weight: 600;
+            padding: 11px 22px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--azure-2); color: #fff; }
+        .btn-primary:hover { background: var(--azure); }
+        .btn-amber { background: var(--amber); color: #fff; }
+        .btn-amber:hover { filter: brightness(1.05); }
+        .btn-sm { padding: 6px 12px; font-size: 0.82rem; border-radius: 8px; }
+        .btn-outline { background: transparent; border: 1px solid var(--azure); color: var(--azure-2); }
+        .btn-outline:hover { background: rgba(62,142,208,0.08); }
+        .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+        .btn-ghost:hover { background: var(--paper); }
+        .btn-danger-ghost { background: transparent; color: var(--err); border: 1px solid var(--line); }
+        .btn-danger-ghost:hover { background: rgba(192,52,29,0.06); border-color: var(--err); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ===== PANEL / FILTERS ===== */
+        .panel {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr auto;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="date"], input[type="number"], select {
+            width: 100%;
+            font-family: var(--body);
+            font-size: 0.95rem;
+            padding: 11px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--paper);
+            color: var(--char);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--azure);
+            box-shadow: 0 0 0 3px rgba(62,142,208,0.15);
+            background: #fff;
+        }
+        input::placeholder { color: var(--muted); }
+        input[readonly], input:disabled { background: #EEF2F7; color: var(--navy-2); }
+
+        /* ===== TABLE ===== */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .data-table thead th {
+            background: var(--navy-2);
+            color: #fff;
+            font-weight: 600;
+            text-align: left;
+            padding: 13px 16px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+        .data-table tbody td {
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--line);
+            color: var(--char);
+            white-space: nowrap;
+        }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover { background: var(--paper); }
+        .data-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+        .text-center { text-align: center; color: var(--muted); padding: 28px 16px !important; }
+
+        .chip {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .chip-open { background: rgba(62,142,208,0.12); color: var(--azure-2); }
+        .chip-closed { background: rgba(46,125,70,0.12); color: var(--ok); }
+        .chip-cancel { background: rgba(192,52,29,0.12); color: var(--err); }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,22,30,0.55);
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 16px;
+            z-index: 50;
+            overflow-y: auto;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--paper-2);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 780px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+        }
+        .modal-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 24px; border-bottom: 1px solid var(--line);
+        }
+        .modal-head h2 { font-family: var(--display); font-size: 1.2rem; color: var(--navy-1); }
+        .modal-close { background: none; border: none; cursor: pointer; font-size: 1.4rem; color: var(--muted); line-height: 1; }
+        .modal-body { padding: 24px; }
+        .modal-foot {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 16px 24px; border-top: 1px solid var(--line);
+        }
+        .modal-foot .total-preview { font-size: 0.9rem; color: var(--muted); }
+        .modal-foot .total-preview b { color: var(--navy-1); font-size: 1.1rem; font-family: var(--display); }
+        .modal-foot .foot-btns { display: flex; gap: 12px; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .form-grid .full { grid-column: 1 / -1; }
+        .field label {
+            display: block; font-size: 0.78rem; font-weight: 600;
+            color: var(--muted); text-transform: uppercase;
+            letter-spacing: 0.4px; margin-bottom: 6px;
+        }
+
+        /* Líneas de la oferta */
+        .lines-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .lines-head h3 { font-family: var(--display); font-size: 1rem; color: var(--navy-1); }
+        .line-row {
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .line-row .rm {
+            background: none; border: none; cursor: pointer;
+            color: var(--err); font-size: 1.1rem; padding: 6px;
+        }
+
+        footer {
+            text-align: center; padding: 24px;
+            font-size: 0.85rem; color: var(--muted);
+            border-top: 1px solid var(--line); margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 0 16px; }
+            .logo img { height: 34px; }
+            .brand-title { display: none; }
+            .filters { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .line-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="navbar-brand">
+            <!-- Aquí agregas tu div del logo con la imagen en base64 -->
+            <div class="logo">
+                <img src="RUTA_O_BASE64_DE_TU_LOGO" alt="ALO Group">
+            </div>
+            <span class="brand-title">Portal Comercial</span>
+        </div>
+        <div class="header-actions">
+            <a href="dashboard.html" class="btn-back">← Inicio</a>
+            <a href="#" onclick="app.logout()" class="btn-logout">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-head">
+            <div>
+                <h1>Oferta de Ventas</h1>
+                <p>Crea cotizaciones de venta directa (equipos, repuestos o servicios) y consulta las existentes.</p>
+            </div>
+            <button class="btn btn-amber" onclick="app.abrirNuevaOferta()">+ Nueva oferta</button>
+        </div>
+
+        <div class="panel">
+            <div class="filters">
+                <input type="text" id="filtroTexto" placeholder="Cliente, N° de oferta o referencia...">
+                <select id="filtroEstado">
+                    <option value="">Todos los estados</option>
+                    <option value="O">Abiertas</option>
+                    <option value="C">Cerradas</option>
+                </select>
+                <button class="btn btn-primary" onclick="app.buscarOfertas()">Filtrar</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Cliente</th>
+                            <th>Fecha</th>
+                            <th>Vencimiento</th>
+                            <th>Vendedor</th>
+                            <th class="num-cell">Total (CLP)</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaOfertasBody">
+                        <tr>
+                            <td colspan="8" class="text-center">Cargando ofertas de venta...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== MODAL NUEVA OFERTA ===== -->
+    <div class="modal-overlay" id="modalNueva">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>Nueva oferta de venta</h2>
+                <button class="modal-close" onclick="app.cerrarNuevaOferta()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Cabecera -->
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="ofCliente">Cliente (CardCode / RUT)</label>
+                        <input type="text" id="ofCliente" placeholder="Busca por RUT o nombre...">
+                    </div>
+                    <div class="field">
+                        <label for="ofVendedor">Vendedor</label>
+                        <input type="text" id="ofVendedor" readonly>
+                    </div>
+                    <div class="field">
+                        <label for="ofFecha">Fecha del documento</label>
+                        <input type="date" id="ofFecha">
+                    </div>
+                    <div class="field">
+                        <label for="ofVence">Válida hasta</label>
+                        <input type="date" id="ofVence">
+                    </div>
+                    <div class="field full">
+                        <label for="ofReferencia">Referencia / comentarios</label>
+                        <input type="text" id="ofReferencia" placeholder="Nº de orden del cliente, notas...">
+                    </div>
+                </div>
+
+                <!-- Líneas -->
+                <div class="lines-head">
+                    <h3>Ítems a cotizar</h3>
+                    <button class="btn btn-outline btn-sm" onclick="app.agregarLineaOferta()">+ Agregar ítem</button>
+                </div>
+
+                <div class="line-row" style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;">
+                    <div>Artículo (código)</div>
+                    <div>Cantidad</div>
+                    <div>Precio unit.</div>
+                    <div></div>
+                </div>
+
+                <div id="lineasOferta">
+                    <div class="line-row">
+                        <input type="text" placeholder="Código de artículo" class="line-item">
+                        <input type="number" placeholder="1" class="line-qty" min="0" step="1">
+                        <input type="number" placeholder="0" class="line-price" min="0" step="1">
+                        <button class="rm" onclick="app.quitarLineaOferta(this)">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <div class="total-preview">Total estimado: <b id="ofTotalPreview">CLP 0</b>
+                    <span style="display:block;font-size:0.78rem;">IVA 19% se calcula al guardar en SAP</span>
+                </div>
+                <div class="foot-btns">
+                    <button class="btn btn-ghost" onclick="app.cerrarNuevaOferta()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="app.crearOferta()">Crear oferta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        app.checkSession();
+        if (window.app && app.buscarOfertas) app.buscarOfertas();
+    </script>
+</body>
+
+</html>
