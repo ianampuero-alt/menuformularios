@@ -5,38 +5,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nueva Cotización · ALO Group</title>
+    
+    <!-- Materialize Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Google Fonts: Bricolage Grotesque & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
+            /* Paleta Oficial ALO Group */
             --navy-1: #0F161E;
             --navy-2: #16232E;
             --navy-3: #22374A;
-            --azure: #3E8ED0;
+            --azure:   #3E8ED0;
             --azure-2: #2F7FC4;
             --azure-3: #57A6E8;
-            --amber: #F0851E;
+            --amber:   #F0851E;
 
-            --char: #0F1A24;
-            --paper: #F4F7FA;
+            --char:    #0F1A24;
+            --paper:   #F4F7FA;
             --paper-2: #FFFFFF;
-            --line: #DDE5EE;
-            --muted: #6B7A8C;
-            --ok: #2E7D46;
-            --err: #C0341D;
+            --line:    #DDE5EE;
+            --muted:   #6B7A8C;
+            --ok:      #2E7D46;
+            --err:     #C0341D;
 
             --display: 'Bricolage Grotesque', system-ui, sans-serif;
             --body: 'Inter', system-ui, sans-serif;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: var(--body);
@@ -48,46 +49,55 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Navbar Corporativo */
-        .navbar {
-            background: var(--navy-1);
-            color: #fff;
-            padding: 16px 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid var(--navy-3);
+        /* ---------- TOP BRAND BAR ---------- */
+        .topbar {
+            position: relative; overflow: hidden; padding: 18px 28px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            color: #EAF2FB;
+            background:
+                radial-gradient(120% 160% at 100% 0%, rgba(62,142,208,.30) 0%, rgba(62,142,208,0) 45%),
+                linear-gradient(120deg, var(--navy-3) 0%, var(--navy-2) 45%, var(--navy-1) 100%);
+            box-shadow: 0 4px 20px rgba(15,22,30,.25);
         }
+        .topbar::before {
+            content: ""; position: absolute; inset: 0; pointer-events: none;
+            background: linear-gradient(118deg, rgba(255,255,255,0) 32%, rgba(120,170,220,.14) 47%, rgba(160,200,240,.05) 53%, rgba(255,255,255,0) 62%);
+        }
+        .topbar::after {
+            content: ""; position: absolute; width: 360px; height: 360px; right: -140px; top: -200px;
+            background: radial-gradient(circle, rgba(62,142,208,.38) 0%, rgba(62,142,208,0) 70%);
+            filter: blur(6px); animation: breathe 7s ease-in-out infinite; pointer-events: none;
+        }
+        @keyframes breathe { 0%,100% { transform: scale(1); opacity:.7; } 50% { transform: scale(1.12); opacity:1; } }
 
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-family: var(--display);
-            font-weight: 800;
-            font-size: 1.3rem;
-            color: #fff;
-            text-decoration: none;
-        }
+        .shell { position: relative; z-index: 1; display: flex; align-items: center; }
+        .brand { display: flex; align-items: center; margin: 0; padding: 0; }
+        .logo { display: flex; align-items: center; }
+        .logo img { height: 48px; width: auto; display: block; }
 
-        .navbar-brand span {
-            color: var(--azure-3);
+        .client-badge {
+            position: relative; z-index: 1; display: flex; align-items: center; gap: 12px;
+            background: rgba(234,242,251,.08); border: 1px solid rgba(234,242,251,.18);
+            padding: 8px 14px; border-radius: 12px;
         }
+        .client-avatar {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--amber) 0%, #D96B00 100%);
+            color: #fff; font-family: var(--display); font-weight: 800; font-size: 0.95rem;
+            display: grid; place-items: center;
+        }
+        .client-info { display: flex; flex-direction: column; line-height: 1.25; }
+        .client-info .name { font-weight: 700; font-size: 0.88rem; color: #fff; }
+        .client-info .code { font-family: monospace; font-size: 0.75rem; color: var(--azure-3); }
 
-        .back-nav {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: color 0.2s;
+        .btn-back {
+            position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(234,242,251,.1) !important; border: 1px solid rgba(234,242,251,.25) !important;
+            color: #EAF2FB !important; cursor: pointer; font-family: var(--body); font-size: .88rem; font-weight: 600;
+            padding: 8px 16px; border-radius: 10px; height: auto; line-height: 1.4; box-shadow: none; text-transform: none;
+            text-decoration: none; transition: background 0.2s, border-color 0.2s;
         }
-
-        .back-nav:hover {
-            color: var(--azure-3);
-        }
+        .btn-back:hover { background: rgba(234,242,251,.18) !important; border-color: rgba(234,242,251,.45) !important; }
 
         /* Contenedor Principal */
         .container {
@@ -345,24 +355,12 @@
             animation: fade .3s ease both;
         }
 
-        .toast.ok {
-            background: var(--ok);
-        }
-
-        .toast.err {
-            background: var(--err);
-        }
+        .toast.ok { background: var(--ok); }
+        .toast.err { background: var(--err); }
 
         @keyframes fade {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: none;
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: none; }
         }
 
         .spin {
@@ -374,11 +372,7 @@
             animation: rot .8s linear infinite;
         }
 
-        @keyframes rot {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes rot { to { transform: rotate(360deg); } }
 
         footer {
             text-align: center;
@@ -389,37 +383,40 @@
             margin-top: auto;
         }
 
-        @media (max-width: 600px) {
-            .container {
-                padding: 0 12px;
-                margin: 16px auto;
-            }
-
-            .hero-header {
-                padding: 20px 24px;
-            }
-
-            .form-card {
-                padding: 20px;
-            }
-
-            .row {
-                grid-template-columns: 1fr;
-                gap: 0;
-            }
+        @media (max-width: 768px) {
+            .topbar { padding: 14px 18px; flex-direction: column; align-items: flex-start; }
+            .btn-back { align-self: flex-start; }
+            .container { padding: 0 14px; margin: 20px auto; }
+            .hero-header { padding: 20px 24px; }
+            .form-card { padding: 20px; }
+            .row { grid-template-columns: 1fr; gap: 0; }
         }
     </style>
 </head>
 
 <body>
 
-    <header class="navbar">
-        <a href="dashboard.html" class="navbar-brand">
-            <span>ALO GROUP</span> · Portal Comercial
-        </a>
-        <a href="dashboard.html" class="back-nav">
-            ← Volver al Panel
-        </a>
+    <!-- Header Corporativo ALO Group -->
+    <header class="topbar">
+        <div class="shell">
+            <aside class="brand">
+                <div class="logo">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAAHICAYAAAAWSyQFAAEAAElEQVR4nOydd4AjR5X/v6+qpclps7322uucDTgABry7NiZj4gzB2AYOTDpyPgPagTvC+TiO/DPxjswscBhskoHZNUd2xPY6h7W9Xm+ePBqpq97vj+6e0cy0pJZGI7U07wPyaqq6q55K3a369qt+jyAIgiAIgiA0DMwg9EHRFhgAQO+Avq3z/Wck3IkNCcVnscke09rStmI8PdXqZjJEBDAXanABZbPsovmFtvA+efsJaQocsnkRmwrW56kL/RwL6a/APrZYm8X6K2E/AtxOhxIHku0ff9z/PvQfgxvgbNoGt8wehDrCqbUBgiAIgiAIQmXgXmgiGADmpjecfuRys/dVZN70Ehh7alsCGswwBLjpEbSBQE0z4maxRSGDSheSJfdR+j6l1jFTXk1aVl+FPk8UgVlAIJeyr7FAe0JjItl8DwBsXFW23BTqDBGEgiAIgiAIDQD3QtMWmD+++4JVhw/f/gGdffj1XQ63p5mRdoHxrOcxZAaBFE0Lgtw2FlUUsv9/mldckDIE3uJ6CvN8jrLbK7I9Inwv+eojikIGoME4kOXsZFfPLQCAk0QQLhUKHMmCIAiCIAhC3PEEHohA9s7XHNbXqSb/s9Mxa0cyFq4lFwxFBBW+c2h7BTpbQNmsPkKmoNUQUQtZfjlPPBeZRldbFC7AFmbYFg01jsTdj7z7Bydv2rTJhacTRBQuAcIvDoIgCIIgCELs4RQUEZig7P2vP/TTqxPjP9ScXXsgza7LxERwSBWY74VoGiqkc8LqopbN6iP8IbYF9zurjxL3KeYmmVNPxOGfo9y+qPA+JX8vpdnCSQWwUrdt2nSey73QEDG4ZBBBKAiCIAiCUIcM9EJTP+w3U5c233tp15bVzuS7xrLGTFmyRHAo6kowEYWR2yt5bd1C+grbZZFsJwVWipCFcyPAwB5ZRbiUkGcIBUEQBEEQ6ozgecGfXHzW8ifv/e2PO5p5w/5JdonIobCFfsH0Pp/PJ2SfgtFH8/URpWxWHzx/6WWhfcrqI+RzlNpHgfrQz7CQvsr5PBH3zVfPDDXFBG5K3gAAkIAySwrxEAqCIAiCINQRgyk4tAXmzsuftv4Jzj1b2+zEhv0ZuEQ5N/rzLT8s0cNU1CM1tz5fWaFmKuUpLHW5ZZyWj0YZx1n9ldheAVsYYK2gxg2m0s1N2wFgswSUWVKIO1gQBEEQBKFO4BQc6oe7ra/rCcf1JK9qQfawkVwxWImmL6UGmonaxxIINOP1Ub08hZUINMMM26qhxljfcdMlXzy1r6/PFNlTaDDEQygIgiAIglAH8AZPDN7/njOecVyn+n3CTh02kmGjiGd7Buey2J7CqO0skWcKy/YU5qtf5EAzRLAJTXBBt/b19Rk/oIywhBBBKAiCIAiCEHM4BYe2kXvTq7ovaht54BoN2zXhklXkTd51pNtIQ3UYvloWDsiCmMnCoPc9C7zDQCwVQLKLDlEEAqCIAiIMQUBoi9aKLuPW9a964jOtR3jHF12sKqObkFyxKFhRBPYeT2qiIKC22+oGimrDJM4NaumwBgrwSUWXKIIBQEQRAEQYghqRQUGKAtjrnn9Ss+uYqHPp3OGuMyQRFUqAgpVRSWGIAEWKj4iLadiMKQ+nI+T5F9GWCHoMYZE2bZuu0AcLsElFlyiEtYEARBEAQhZnAKivphAagH33TI11c5U68+OGlcy9A0d/4WFtgkd5O4BJopKwiMBJopPThP9LaCgDKjlLztuz/ddXq/p2BFEC4xxEMoCIIgCIIQI4KE84NfSLU/8sZVP1tB46/eP+G6FnCIQm7mV8JTmK+sUB+V8HCJp7CmnkIPvADAP/v/AQ4N/4E/8d6aAAAAAElFTkSuQmCC" alt="ALO Group">
+                </div>
+            </aside>
+        </div>
+
+        <div class="client-badge" id="client-badge-container">
+            <div class="client-avatar" id="client-avatar">AL</div>
+            <div class="client-info">
+                <span class="name" id="display-client-name">Seleccionar Cliente</span>
+                <span class="code">RUT: <strong id="display-rut" style="color:#fff;">--</strong> | CardCode: <strong id="display-cardcode" style="color:var(--amber);">--</strong></span>
+            </div>
+        </div>
+
+        <button class="btn-back" id="btnMenuBack" onclick="window.location.href='menucliente.html'">
+            <i class="material-icons">arrow_back</i> Menú
+        </button>
     </header>
 
     <main class="container">
@@ -503,6 +500,31 @@
     <script>
         const WEBHOOK_CREAR_COTIZACION = 'https://alogroup.app.n8n.cloud/webhook/sap/crearCotizacion';
 
+        // Auto-completar datos de cliente desde sessionStorage si existen
+        document.addEventListener('DOMContentLoaded', () => {
+            const clientName = sessionStorage.getItem('alo_client_name');
+            const cardCode = sessionStorage.getItem('alo_card_code');
+            const rut = sessionStorage.getItem('alo_client_rut');
+
+            if (clientName) {
+                document.getElementById('display-client-name').textContent = clientName;
+                document.getElementById('client-avatar').textContent = clientName.substring(0, 2).toUpperCase();
+            }
+            if (cardCode) {
+                document.getElementById('display-cardcode').textContent = cardCode;
+                document.getElementById('cardCode').value = cardCode;
+            }
+            if (rut) {
+                document.getElementById('display-rut').textContent = rut;
+            }
+        });
+
+        // Actualizar CardCode dinámicamente si el usuario edita el input de texto
+        document.getElementById('cardCode').addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            document.getElementById('display-cardcode').textContent = val || '--';
+        });
+
         function toast(message, ok) {
             const wrap = document.getElementById('toast-wrap');
             const el = document.createElement('div');
@@ -561,7 +583,7 @@
 
                 if (response.ok && result.success) {
                     toast(`¡Cotización N° ${result.docNum} creada exitosamente en SAP!`, true);
-                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+                    setTimeout(() => { window.location.href = 'menucliente.html'; }, 2000);
                 } else {
                     toast('Error SAP: ' + (result.message || 'No se pudo crear el documento.'), false);
                 }
