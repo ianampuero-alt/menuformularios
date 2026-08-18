@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato de Arriendo · ALO Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy-1: #0F161E;
+            --navy-2: #16232E;
+            --navy-3: #22374A;
+            --azure: #3E8ED0;
+            --azure-2: #2F7FC4;
+            --azure-3: #57A6E8;
+            --amber: #F0851E;
+            --char: #0F1A24;
+            --paper: #F4F7FA;
+            --paper-2: #FFFFFF;
+            --line: #DDE5EE;
+            --muted: #6B7A8C;
+            --ok: #2E7D46;
+            --err: #C0341D;
+            --display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--body);
+            background: var(--paper);
+            color: var(--char);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== HEADER ===== */
+        .navbar {
+            background: var(--navy-1);
+            color: #fff;
+            height: 64px;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--navy-3);
+        }
+        .navbar-brand { display: flex; align-items: center; gap: 12px; height: 100%; }
+        .logo { display: flex; align-items: center; height: 100%; }
+        .logo img { height: 40px; width: auto; object-fit: contain; display: block; }
+        .brand-title {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--azure-3);
+            letter-spacing: 0.3px;
+        }
+        .nav-menu { display: flex; align-items: center; gap: 6px; }
+        .nav-menu a {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-menu a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .nav-menu a.active { background: var(--azure-2); color: #fff; }
+        .nav-menu a.logout {
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            margin-left: 8px;
+        }
+        .nav-menu a.logout:hover { background: var(--err); border-color: var(--err); }
+
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 32px auto;
+            padding: 0 24px;
+            flex: 1;
+        }
+        .page-head { margin-bottom: 24px; }
+        .page-head h1 {
+            font-family: var(--display);
+            font-size: 1.7rem;
+            color: var(--navy-1);
+            margin-bottom: 4px;
+        }
+        .page-head p { color: var(--muted); font-size: 0.95rem; }
+
+        /* ===== PANEL / CARD ===== */
+        .panel {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+        }
+        .panel-title {
+            font-family: var(--display);
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--navy-1);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-title .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--azure-2);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            font-family: var(--body);
+        }
+
+        /* ===== FETCH COTIZACION ===== */
+        .fetch-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+        }
+        .field label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+        }
+        input[type="text"], input[type="date"], select {
+            width: 100%;
+            font-family: var(--body);
+            font-size: 0.95rem;
+            padding: 11px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--paper);
+            color: var(--char);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--azure);
+            box-shadow: 0 0 0 3px rgba(62,142,208,0.15);
+            background: #fff;
+        }
+        input::placeholder { color: var(--muted); }
+        input[readonly], input:disabled {
+            background: #EEF2F7;
+            color: var(--navy-2);
+            cursor: not-allowed;
+        }
+
+        .btn {
+            font-family: var(--body);
+            font-size: 0.92rem;
+            font-weight: 600;
+            padding: 11px 22px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--azure-2); color: #fff; }
+        .btn-primary:hover { background: var(--azure); }
+        .btn-lg { padding: 14px 28px; font-size: 1rem; }
+        .btn-block { width: 100%; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-fetch { align-self: end; }
+
+        /* ===== CLIENT DATA GRID ===== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-grid .full { grid-column: 1 / -1; }
+
+        /* Hidden until cotización loaded */
+        .hidden { display: none; }
+
+        /* Summary chips row */
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--line);
+        }
+        .meta-chip {
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 0.85rem;
+        }
+        .meta-chip b { color: var(--muted); font-weight: 600; }
+
+        .helper {
+            font-size: 0.82rem;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        /* Footer actions */
+        .actions-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 0.85rem;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            margin-top: auto;
+        }
+
+        @media (max-width: 640px) {
+            .navbar { padding: 0 16px; }
+            .logo img { height: 34px; }
+            .brand-title { display: none; }
+            .nav-menu a { padding: 6px 10px; font-size: 0.82rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            .fetch-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="navbar-brand">
+            <!-- Aquí agregas tu div del logo con la imagen en base64 -->
+            <div class="logo">
+                <img src="RUTA_O_BASE64_DE_TU_LOGO" alt="ALO Group">
+            </div>
+            <span class="brand-title">Portal Comercial</span>
+        </div>
+        <nav class="nav-menu">
+            <a href="dashboard.html">Inicio</a>
+            <a href="clientes.html">Clientes</a>
+            <a href="cotizacion.html">Cotizaciones</a>
+            <a href="contrato.html" class="active">Contrato</a>
+            <a href="#" onclick="app.logout()" class="logout">Cerrar Sesión</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="page-head">
+            <h1>Contrato de Arriendo</h1>
+            <p>Genera un contrato (VID_RTOV) a partir de una cotización de arriendo existente.</p>
+        </div>
+
+        <!-- PASO 1: traer cotización -->
+        <div class="panel">
+            <div class="panel-title"><span class="step">1</span> Cargar cotización</div>
+            <div class="fetch-row">
+                <div class="field">
+                    <label for="docCotizacion">N° de cotización (DocEntry / DocNum)</label>
+                    <input type="text" id="docCotizacion" placeholder="Ej: 135183">
+                </div>
+                <button class="btn btn-primary btn-fetch" onclick="app.cargarCotizacion()">Traer datos</button>
+            </div>
+            <p class="helper">Ingresa el número de la cotización de arriendo ya creada en SAP para
+                heredar el cliente, los equipos y las condiciones.</p>
+        </div>
+
+        <!-- PASO 2: datos del cliente (se muestra tras cargar) -->
+        <div class="panel hidden" id="panelCliente">
+            <div class="panel-title"><span class="step">2</span> Datos del cliente</div>
+
+            <div class="meta-row">
+                <div class="meta-chip"><b>Cotización origen:</b> <span id="metaCotizacion">—</span></div>
+                <div class="meta-chip"><b>Sucursal:</b> <span id="metaSucursal">—</span></div>
+                <div class="meta-chip"><b>Vendedor:</b> <span id="metaVendedor">—</span></div>
+            </div>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label for="cardCode">Código cliente (CardCode)</label>
+                    <input type="text" id="cardCode" readonly>
+                </div>
+                <div class="field">
+                    <label for="rut">RUT (U_Rut)</label>
+                    <input type="text" id="rut" readonly>
+                </div>
+                <div class="field full">
+                    <label for="cardName">Nombre / Razón social</label>
+                    <input type="text" id="cardName" readonly>
+                </div>
+                <div class="field">
+                    <label for="destFact">Destinatario factura (U_DestFact)</label>
+                    <input type="text" id="destFact" readonly>
+                </div>
+                <div class="field">
+                    <label for="condPago">Condición de pago (U_CondPago)</label>
+                    <input type="text" id="condPago" readonly>
+                </div>
+                <div class="field full">
+                    <label for="destFAddr">Dirección de facturación (U_DestFAddr)</label>
+                    <input type="text" id="destFAddr" readonly>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 3: fechas del contrato (se muestra tras cargar) -->
+        <div class="panel hidden" id="panelContrato">
+            <div class="panel-title"><span class="step">3</span> Condiciones del contrato</div>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="fechaInicio">Fecha de inicio</label>
+                    <input type="date" id="fechaInicio">
+                </div>
+                <div class="field">
+                    <label for="fechaTermino">Fecha de término</label>
+                    <input type="date" id="fechaTermino">
+                </div>
+                <div class="field full">
+                    <label for="observaciones">Observaciones</label>
+                    <input type="text" id="observaciones" placeholder="Notas internas del contrato (opcional)">
+                </div>
+            </div>
+            <p class="helper">Los equipos, adicionales y totales se heredan de la cotización. Los precios
+                los recalcula SAP al generar el documento.</p>
+        </div>
+
+        <div class="panel hidden" id="panelAcciones">
+            <div class="actions-bar">
+                <button class="btn btn-primary btn-lg" id="btnGenerar" onclick="app.generarContrato()">
+                    Generar contrato
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>app.checkSession();</script>
+</body>
+
+</html>
