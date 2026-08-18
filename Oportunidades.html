@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oportunidades · ALO Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy-1: #0F161E;
+            --navy-2: #16232E;
+            --navy-3: #22374A;
+            --azure: #3E8ED0;
+            --azure-2: #2F7FC4;
+            --azure-3: #57A6E8;
+            --amber: #F0851E;
+            --char: #0F1A24;
+            --paper: #F4F7FA;
+            --paper-2: #FFFFFF;
+            --line: #DDE5EE;
+            --muted: #6B7A8C;
+            --ok: #2E7D46;
+            --err: #C0341D;
+            --display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--body);
+            background: var(--paper);
+            color: var(--char);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== HEADER ===== */
+        .navbar {
+            background: var(--navy-1);
+            color: #fff;
+            height: 64px;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--navy-3);
+        }
+        .navbar-brand { display: flex; align-items: center; gap: 12px; height: 100%; }
+        .logo { display: flex; align-items: center; height: 100%; }
+        .logo img { height: 40px; width: auto; object-fit: contain; display: block; }
+        .brand-title {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--azure-3);
+            letter-spacing: 0.3px;
+        }
+        .nav-menu { display: flex; align-items: center; gap: 6px; }
+        .nav-menu a {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-menu a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .nav-menu a.active { background: var(--azure-2); color: #fff; }
+        .nav-menu a.logout {
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            margin-left: 8px;
+        }
+        .nav-menu a.logout:hover { background: var(--err); border-color: var(--err); }
+
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 32px auto;
+            padding: 0 24px;
+            flex: 1;
+        }
+        .page-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .page-head h1 {
+            font-family: var(--display);
+            font-size: 1.7rem;
+            color: var(--navy-1);
+            margin-bottom: 4px;
+        }
+        .page-head p { color: var(--muted); font-size: 0.95rem; }
+
+        /* ===== KPI STRIP ===== */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .kpi .label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .kpi .num {
+            font-family: var(--display);
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: var(--navy-1);
+            margin-top: 6px;
+        }
+
+        /* ===== PANEL / FILTERS ===== */
+        .panel {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr 1fr auto;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        input[type="text"], select {
+            width: 100%;
+            font-family: var(--body);
+            font-size: 0.95rem;
+            padding: 11px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--paper);
+            color: var(--char);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--azure);
+            box-shadow: 0 0 0 3px rgba(62,142,208,0.15);
+            background: #fff;
+        }
+        input::placeholder { color: var(--muted); }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            font-family: var(--body);
+            font-size: 0.92rem;
+            font-weight: 600;
+            padding: 11px 22px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--azure-2); color: #fff; }
+        .btn-primary:hover { background: var(--azure); }
+        .btn-amber { background: var(--amber); color: #fff; }
+        .btn-amber:hover { filter: brightness(1.05); }
+        .btn-sm { padding: 6px 12px; font-size: 0.82rem; border-radius: 8px; }
+        .btn-outline { background: transparent; border: 1px solid var(--azure); color: var(--azure-2); }
+        .btn-outline:hover { background: rgba(62,142,208,0.08); }
+        .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+        .btn-ghost:hover { background: var(--paper); }
+
+        /* ===== TABLE ===== */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .data-table thead th {
+            background: var(--navy-2);
+            color: #fff;
+            font-weight: 600;
+            text-align: left;
+            padding: 13px 16px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+        .data-table tbody td {
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--line);
+            color: var(--char);
+            white-space: nowrap;
+        }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+        .data-table tbody tr:hover { background: var(--paper); }
+        .data-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+        .text-center { text-align: center; color: var(--muted); padding: 28px 16px !important; }
+
+        /* status chips */
+        .chip {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .chip-open { background: rgba(62,142,208,0.12); color: var(--azure-2); }
+        .chip-won  { background: rgba(46,125,70,0.12); color: var(--ok); }
+        .chip-lost { background: rgba(192,52,29,0.12); color: var(--err); }
+
+        /* stage progress mini-bar */
+        .stage { display: flex; align-items: center; gap: 8px; }
+        .stage-bar {
+            width: 70px; height: 6px; border-radius: 4px;
+            background: var(--line); overflow: hidden;
+        }
+        .stage-bar > span { display: block; height: 100%; background: var(--azure); }
+        .stage-pct { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,22,30,0.55);
+            display: none;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 16px;
+            z-index: 50;
+            overflow-y: auto;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--paper-2);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 620px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+        }
+        .modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--line);
+        }
+        .modal-head h2 {
+            font-family: var(--display);
+            font-size: 1.2rem;
+            color: var(--navy-1);
+        }
+        .modal-close {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.4rem; color: var(--muted); line-height: 1;
+        }
+        .modal-body { padding: 24px; }
+        .modal-foot {
+            display: flex; justify-content: flex-end; gap: 12px;
+            padding: 16px 24px; border-top: 1px solid var(--line);
+        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-grid .full { grid-column: 1 / -1; }
+        .field label {
+            display: block; font-size: 0.78rem; font-weight: 600;
+            color: var(--muted); text-transform: uppercase;
+            letter-spacing: 0.4px; margin-bottom: 6px;
+        }
+        textarea {
+            width: 100%; font-family: var(--body); font-size: 0.95rem;
+            padding: 11px 14px; border: 1px solid var(--line);
+            border-radius: 10px; background: var(--paper); color: var(--char);
+            resize: vertical; min-height: 74px;
+        }
+        textarea:focus {
+            outline: none; border-color: var(--azure);
+            box-shadow: 0 0 0 3px rgba(62,142,208,0.15); background: #fff;
+        }
+        .readonly-hint { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+
+        footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 0.85rem;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 0 16px; }
+            .logo img { height: 34px; }
+            .brand-title { display: none; }
+            .nav-menu a { padding: 6px 10px; font-size: 0.82rem; }
+            .filters { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="navbar-brand">
+            <!-- Aquí agregas tu div del logo con la imagen en base64 -->
+            <div class="logo">
+                <img src="RUTA_O_BASE64_DE_TU_LOGO" alt="ALO Group">
+            </div>
+            <span class="brand-title">Portal Comercial</span>
+        </div>
+        <nav class="nav-menu">
+            <a href="dashboard.html">Inicio</a>
+            <a href="clientes.html">Clientes</a>
+            <a href="oportunidades.html" class="active">Oportunidades</a>
+            <a href="cotizacion.html">Cotizaciones</a>
+            <a href="contrato.html">Contrato</a>
+            <a href="#" onclick="app.logout()" class="logout">Cerrar Sesión</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="page-head">
+            <div>
+                <h1>Pipeline de Oportunidades</h1>
+                <p>Gestiona tus oportunidades de arriendo, filtra por etapa y registra nuevas.</p>
+            </div>
+            <button class="btn btn-amber" onclick="app.abrirNuevaOportunidad()">+ Nueva oportunidad</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="label">Abiertas</div>
+                <div class="num" id="kpiAbiertas">—</div>
+            </div>
+            <div class="kpi">
+                <div class="label">Potencial total</div>
+                <div class="num" id="kpiPotencial">—</div>
+            </div>
+            <div class="kpi">
+                <div class="label">Ponderado</div>
+                <div class="num" id="kpiPonderado">—</div>
+            </div>
+            <div class="kpi">
+                <div class="label">Ganadas (mes)</div>
+                <div class="num" id="kpiGanadas">—</div>
+            </div>
+        </div>
+
+        <!-- Filtros + tabla -->
+        <div class="panel">
+            <div class="filters">
+                <input type="text" id="filtroTexto" placeholder="Cliente, N° oportunidad o descripción...">
+                <select id="filtroEstado">
+                    <option value="">Todos los estados</option>
+                    <option value="O">Abiertas</option>
+                    <option value="W">Ganadas</option>
+                    <option value="L">Perdidas</option>
+                </select>
+                <select id="filtroEtapa">
+                    <option value="">Todas las etapas</option>
+                    <option value="1">1 · Prospecto (5%)</option>
+                    <option value="3">3 · Cotizado (20%)</option>
+                    <option value="4">4 · Negociación (50%)</option>
+                    <option value="5">5 · Cierre</option>
+                </select>
+                <button class="btn btn-primary" onclick="app.buscarOportunidades()">Filtrar</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Cliente</th>
+                            <th>Oportunidad</th>
+                            <th>Vendedor</th>
+                            <th>Etapa</th>
+                            <th class="num-cell">Potencial (CLP)</th>
+                            <th>Cierre prev.</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaOportunidadesBody">
+                        <tr>
+                            <td colspan="9" class="text-center">Cargando pipeline...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== MODAL NUEVA OPORTUNIDAD ===== -->
+    <div class="modal-overlay" id="modalNueva">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>Nueva oportunidad</h2>
+                <button class="modal-close" onclick="app.cerrarNuevaOportunidad()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="field full">
+                        <label for="opCliente">Cliente (CardCode / RUT)</label>
+                        <input type="text" id="opCliente" placeholder="Busca por RUT o nombre...">
+                    </div>
+                    <div class="field full">
+                        <label for="opNombre">Nombre de la oportunidad</label>
+                        <input type="text" id="opNombre" placeholder="Ej: BRAZO ART 40 MTS - CHILLÁN">
+                    </div>
+                    <div class="field">
+                        <label for="opEtapa">Etapa inicial</label>
+                        <select id="opEtapa">
+                            <option value="1">1 · Prospecto (5%)</option>
+                            <option value="3">3 · Cotizado (20%)</option>
+                            <option value="4">4 · Negociación (50%)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="opPotencial">Importe potencial (CLP)</label>
+                        <input type="text" id="opPotencial" placeholder="0">
+                    </div>
+                    <div class="field">
+                        <label for="opCierre">Cierre previsto</label>
+                        <input type="text" id="opCierre" placeholder="DD/MM/AAAA">
+                    </div>
+                    <div class="field">
+                        <label for="opVendedor">Vendedor</label>
+                        <input type="text" id="opVendedor" readonly>
+                    </div>
+                    <div class="field full">
+                        <label for="opComentarios">Comentarios / requerimiento</label>
+                        <textarea id="opComentarios"
+                            placeholder="Altura, alcance, tipo de suelo, fecha de inicio, días de arriendo, contacto..."></textarea>
+                        <p class="readonly-hint">El tipo de negocio se registra como ARRIENDO automáticamente.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="app.cerrarNuevaOportunidad()">Cancelar</button>
+                <button class="btn btn-primary" onclick="app.crearOportunidad()">Crear oportunidad</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        app.checkSession();
+        // Al cargar la vista, precargar el pipeline
+        if (window.app && app.buscarOportunidades) app.buscarOportunidades();
+    </script>
+</body>
+
+</html>
