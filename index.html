@@ -4,36 +4,219 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso Portal - ALO RENTAL</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <!-- Carga SDK Oficial Google SSO -->
+    <!-- SDK Oficial Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <style>
+        :root {
+            --primary: #f2c700;
+            --primary-dark: #d4ae00;
+            --secondary: #1a1a1a;
+            --bg-light: #f4f5f7;
+            --white: #ffffff;
+            --border: #e0e0e0;
+            --text-main: #333333;
+            --text-muted: #777777;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body.login-bg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--secondary) 0%, #333333 100%);
+            padding: 20px;
+        }
+
+        .login-container {
+            background: var(--white);
+            padding: 35px 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .logo-area h1 {
+            font-size: 2.2rem;
+            color: var(--secondary);
+            letter-spacing: -1px;
+        }
+
+        .logo-area p {
+            margin-top: 4px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .highlight {
+            color: var(--primary);
+        }
+
+        /* Pestañas de Navegación */
+        .tabs-container {
+            display: flex;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 10px;
+            border: none;
+            background: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            color: var(--secondary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-desc {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Formularios */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary-dark);
+            outline: none;
+        }
+
+        /* Botones */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--secondary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .full-width {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        /* Contenedor de Google SSO */
+        .google-sso-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            min-height: 44px;
+        }
+
+        /* Alertas */
+        .alert {
+            padding: 12px 14px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .alert-error {
+            background-color: #fdeaea;
+            color: var(--danger);
+            border-left: 4px solid var(--danger);
+        }
+
+        .alert-success {
+            background-color: #eafaf1;
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+    </style>
 </head>
 <body class="login-bg">
     <div class="login-container">
         <div class="logo-area">
             <h1>ALO <span class="highlight">RENTAL</span></h1>
-            <p>Portal de Servicios</p>
+            <p>Portal de Servicios Comercial</p>
         </div>
 
-        <!-- Pestañas de Selección de Rol -->
+        <!-- Selector de Pestañas -->
         <div class="tabs-container">
-            <button class="tab-btn active" onclick="app.switchTab('trabajador')">Colaboradores ALO</button>
-            <button class="tab-btn" onclick="app.switchTab('cliente')">Portal Clientes</button>
+            <button type="button" class="tab-btn active" id="tabTrabajador" onclick="app.switchTab('trabajador')">Colaboradores ALO</button>
+            <button type="button" class="tab-btn" id="tabCliente" onclick="app.switchTab('cliente')">Portal Clientes</button>
         </div>
 
         <div id="alertMsg" class="alert" style="display:none;"></div>
 
         <!-- VISTA 1: COLABORADORES (Google SSO) -->
-        <div id="viewTrabajador" class="tab-content active">
+        <div id="viewTrabajador" class="tab-content">
             <p class="tab-desc">Ingresa con tu correo corporativo @alo-group.com</p>
-            <div id="g_id_onload"
-                 data-client_id="TU_CLIENT_ID_GOOGLE.apps.googleusercontent.com"
-                 data-callback="handleGoogleCredentialResponse">
+            <div class="google-sso-wrapper">
+                <!-- Reemplazar data-client_id con la clave de cliente asignada en Google Cloud -->
+                <div id="g_id_onload"
+                     data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                     data-callback="handleGoogleCredentialResponse">
+                </div>
+                <div class="g_id_signin" 
+                     data-type="standard" 
+                     data-theme="outline" 
+                     data-size="large" 
+                     data-width="360">
+                </div>
             </div>
-            <div class="g_id_signin" data-type="standard" data-theme="outline" data-size="large" data-width="100%"></div>
         </div>
 
-        <!-- VISTA 2: CLIENTES (RUT + OTP tradicional) -->
+        <!-- VISTA 2: CLIENTES (RUT + OTP) -->
         <div id="viewCliente" class="tab-content" style="display:none;">
             <form id="formLoginCliente">
                 <div class="form-group">
@@ -41,12 +224,12 @@
                     <input type="text" id="clientRut" placeholder="Ej: 76721028-0" required>
                 </div>
                 <div class="form-group">
-                    <label>Correo de Contacto</label>
+                    <label>Correo Electrónico de Contacto</label>
                     <input type="email" id="clientEmail" placeholder="contacto@empresa.cl" required>
                 </div>
                 <div class="form-group" id="otpGroup" style="display: none;">
-                    <label>Código OTP</label>
-                    <input type="text" id="clientOtp" placeholder="Ingrese el código enviado">
+                    <label>Código de Verificación OTP</label>
+                    <input type="text" id="clientOtp" placeholder="Ingrese código de 6 dígitos">
                 </div>
                 <button type="button" class="btn btn-primary full-width" id="btnRequestOtp" onclick="app.requestClientOtp()">Solicitar Acceso</button>
                 <button type="submit" class="btn btn-primary full-width" id="btnLoginCliente" style="display: none;">Ingresar</button>
@@ -54,6 +237,150 @@
         </div>
     </div>
 
-    <script src="js/app.js"></script>
+    <script>
+        // Callback para procesar credencial devuelta por Google Identity Services
+        function handleGoogleCredentialResponse(response) {
+            const responsePayload = parseJwt(response.credential);
+            const email = responsePayload.email || '';
+
+            if (!email.toLowerCase().endsWith('@alo-group.com')) {
+                app.showAlert('Acceso restringido a correos corporativos @alo-group.com', 'error');
+                return;
+            }
+
+            app.showAlert('Verificando acceso en maestro de usuarios...', 'success');
+
+            // Envío del token verificado al webhook unificado
+            fetch('https://alogroup.app.n8n.cloud/webhook/auth/googleWorkerLogin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, token: response.credential })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Guarda datos de sesión en sessionStorage
+                    sessionStorage.setItem('alo_user_email', data.data.CORREO);
+                    sessionStorage.setItem('alo_user_role', data.data.ROLE);
+                    sessionStorage.setItem('alo_user_name', data.data.NOMBRE_USUARIO);
+                    sessionStorage.setItem('alo_user_code', data.data.CODIGO_USUARIO);
+                    sessionStorage.setItem('alo_sales_person', data.data.EMPLEADO_VENTAS);
+                    sessionStorage.setItem('alo_branch', data.data.SUCURSAL);
+                    sessionStorage.setItem('alo_zone', data.data.ZONA);
+
+                    window.location.href = 'dashboard.html';
+                } else {
+                    app.showAlert(data.message || 'El usuario no posee permisos habilitados.', 'error');
+                }
+            })
+            .catch(() => {
+                app.showAlert('Error de conexión con el servicio de autenticación.', 'error');
+            });
+        }
+
+        // Función para decodificar JWT de Google
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(c => 
+                    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                ).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return {};
+            }
+        }
+
+        // Controlador de la aplicación Frontend
+        const app = {
+            switchTab: function(tab) {
+                document.getElementById('tabTrabajador').classList.remove('active');
+                document.getElementById('tabCliente').classList.remove('active');
+                document.getElementById('viewTrabajador').style.display = 'none';
+                document.getElementById('viewCliente').style.display = 'none';
+
+                if (tab === 'trabajador') {
+                    document.getElementById('tabTrabajador').classList.add('active');
+                    document.getElementById('viewTrabajador').style.display = 'block';
+                } else {
+                    document.getElementById('tabCliente').classList.add('active');
+                    document.getElementById('viewCliente').style.display = 'block';
+                }
+            },
+
+            showAlert: function(msg, type = 'error') {
+                const el = document.getElementById('alertMsg');
+                if (!el) return;
+                el.innerText = msg;
+                el.className = 'alert alert-' + type;
+                el.style.display = 'block';
+                setTimeout(() => { el.style.display = 'none'; }, 6000);
+            },
+
+            requestClientOtp: function() {
+                const rut = document.getElementById('clientRut').value.trim();
+                const email = document.getElementById('clientEmail').value.trim();
+
+                if (!rut || !email) {
+                    this.showAlert('Por favor ingresa RUT y correo de contacto.', 'error');
+                    return;
+                }
+
+                this.showAlert('Enviando código OTP...', 'success');
+
+                fetch('https://alogroup.app.n8n.cloud/webhook/sap/processEmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rut: rut, email: email })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        this.showAlert('Código enviado a tu correo.', 'success');
+                        document.getElementById('otpGroup').style.display = 'block';
+                        document.getElementById('btnRequestOtp').style.display = 'none';
+                        document.getElementById('btnLoginCliente').style.display = 'block';
+                    } else {
+                        this.showAlert(data.message || 'RUT o correo no registrado.', 'error');
+                    }
+                })
+                .catch(() => {
+                    this.showAlert('Error de red al procesar la solicitud.', 'error');
+                });
+            }
+        };
+
+        // Evento Submit para el formulario de Clientes
+        document.getElementById('formLoginCliente').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const rut = document.getElementById('clientRut').value.trim();
+            const otp = document.getElementById('clientOtp').value.trim();
+
+            if (!otp) {
+                app.showAlert('Ingresa el código OTP recibido.', 'error');
+                return;
+            }
+
+            fetch('https://alogroup.app.n8n.cloud/webhook/sap/validateOTP', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut: rut, otp: otp })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    sessionStorage.setItem('alo_user_role', 'cliente');
+                    sessionStorage.setItem('alo_user_rut', rut);
+                    window.location.href = 'menucliente.html';
+                } else {
+                    app.showAlert(data.message || 'Código OTP incorrecto.', 'error');
+                }
+            })
+            .catch(() => {
+                app.showAlert('Error al validar el código.', 'error');
+            });
+        });
+    </script>
 </body>
 </html>
