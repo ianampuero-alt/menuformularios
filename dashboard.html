@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Comercial · ALO Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy-1: #0F161E;
+            --navy-2: #16232E;
+            --navy-3: #22374A;
+            --azure:  #3E8ED0;
+            --azure-2:#2F7FC4;
+            --azure-3:#57A6E8;
+            --amber:  #F0851E;
+            --char:   #0F1A24;
+            --paper:  #F4F7FA;
+            --paper-2:#FFFFFF;
+            --line:   #DDE5EE;
+            --muted:  #6B7A8C;
+            --ok:     #2E7D46;
+            --err:    #C0341D;
+            --display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --body: 'Inter', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--body);
+            background: var(--paper);
+            color: var(--char);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: var(--navy-1);
+            color: #fff;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--navy-3);
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+        .navbar-brand span { color: var(--azure-3); }
+
+        .user-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .user-info {
+            text-align: right;
+        }
+        .user-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #fff;
+        }
+        .user-role {
+            font-size: 0.78rem;
+            color: var(--azure-3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--body);
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: var(--err);
+            border-color: var(--err);
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 32px auto;
+            padding: 0 24px;
+            flex: 1;
+        }
+
+        .welcome-hero {
+            background: linear-gradient(135deg, var(--navy-3) 0%, var(--navy-2) 100%);
+            color: #fff;
+            padding: 32px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+            box-shadow: 0 10px 25px rgba(15, 22, 30, 0.15);
+        }
+        .welcome-hero h1 {
+            font-family: var(--display);
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+        .welcome-hero p {
+            color: rgba(234,242,251,.8);
+            font-size: 0.98rem;
+        }
+
+        /* Metrics Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .metric-card {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .metric-card .title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .metric-card .value {
+            font-family: var(--display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--navy-1);
+            margin: 8px 0 4px;
+        }
+        .metric-card .desc {
+            font-size: 0.85rem;
+            color: var(--ok);
+            font-weight: 500;
+        }
+
+        /* Action Cards Grid */
+        .section-title {
+            font-family: var(--display);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--navy-1);
+        }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .action-card {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+            border-color: var(--azure);
+        }
+        .action-card h3 {
+            font-family: var(--display);
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: var(--navy-2);
+        }
+        .action-card p {
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 0.85rem;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="navbar-brand">
+            <span>ALO GROUP</span> · Portal Comercial
+        </div>
+        <div class="user-nav">
+            <div class="user-info">
+                <div id="user-name-display" class="user-name">Cargando...</div>
+                <div id="user-role-display" class="user-role">Colaborador</div>
+            </div>
+            <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="welcome-hero">
+            <h1 id="welcome-title">Bienvenido al Panel Comercial</h1>
+            <p>Accede a la gestión de clientes, solicitudes y cotizaciones desde tu plataforma unificada.</p>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="title">Solicitudes Activas</div>
+                <div class="value">12</div>
+                <div class="desc">3 pendientes de revisión</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Clientes Asignados</div>
+                <div class="value">28</div>
+                <div class="desc">Actualizado hoy</div>
+            </div>
+            <div class="metric-card">
+                <div class="title">Cotizaciones del Mes</div>
+                <div class="value">15</div>
+                <div class="desc">+12% vs mes anterior</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Módulos de Gestión</h2>
+        <div class="actions-grid">
+            <div class="action-card" onclick="alert('Módulo de Gestión de Clientes en desarrollo')">
+                <h3>Gestión de Clientes</h3>
+                <p>Consulta la información técnica y de contacto de tus clientes asignados en SAP.</p>
+            </div>
+            <div class="action-card" onclick="alert('Módulo de Cotizaciones en desarrollo')">
+                <h3>Cotizaciones y Pedidos</h3>
+                <p>Crea y revisa el estado de solicitudes de equipos y servicios ALO Rental.</p>
+            </div>
+            <div class="action-card" onclick="alert('Módulo de Reportes en desarrollo')">
+                <h3>Reportes Comerciales</h3>
+                <p>Visualiza métricas de rendimiento, estados de cuenta y resúmenes de zona.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
+    </footer>
+
+    <script>
+        // Validar sesión al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            const userEmail = sessionStorage.getItem('alo_user_email');
+            const userName  = sessionStorage.getItem('alo_user_name') || sessionStorage.getItem('alo_sales_person') || userEmail;
+            const userRole  = sessionStorage.getItem('alo_user_role') || 'Comercial';
+
+            // Redirigir a login si no hay sesión activa
+            if (!userEmail) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Mostrar información en pantalla
+            document.getElementById('user-name-display').textContent = userName;
+            document.getElementById('user-role-display').textContent = 'Rol: ' + userRole;
+            document.getElementById('welcome-title').textContent = '¡Hola, ' + userName + '!';
+        });
+
+        // Función para cerrar sesión
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
