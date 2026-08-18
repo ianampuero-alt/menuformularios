@@ -3,86 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotización de Arriendo · ALO Group</title>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Nueva Cotización · ALO Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --navy-1: #0F161E; --azure: #3E8ED0; --paper: #F4F7FA; --line: #DDE5EE; }
+        :root {
+            --navy-1: #0F161E;
+            --navy-2: #16232E;
+            --navy-3: #22374A;
+            --azure:  #3E8ED0;
+            --azure-2:#2F7FC4;
+            --azure-3:#57A6E8;
+            --amber:  #F0851E;
+
+            --char:   #0F1A24;
+            --paper:  #F4F7FA;
+            --paper-2:#FFFFFF;
+            --line:   #DDE5EE;
+            --muted:  #6B7A8C;
+            --ok:     #2E7D46;
+            --err:    #C0341D;
+
+            --display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --body: 'Inter', system-ui, sans-serif;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--paper); padding: 16px; color: #0F1A24; }
-        .card { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 24px; border: 1px solid var(--line); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        h2 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.5rem; margin-bottom: 20px; color: var(--navy-1); }
-        .field { margin-bottom: 16px; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-        input, select { width: 100%; padding: 12px; border: 1.5px solid var(--line); border-radius: 10px; font-size: 0.95rem; }
-        input:focus { outline: none; border-color: var(--azure); }
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-        .checkbox-group input { width: auto; }
-        .btn { width: 100%; background: var(--azure); color: #fff; font-weight: 700; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 1rem; margin-top: 12px; }
-        .btn:disabled { opacity: 0.6; }
-        .back-link { display: inline-block; margin-bottom: 16px; color: var(--azure); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        body {
+            font-family: var(--body);
+            background: var(--paper);
+            color: var(--char);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Navbar Corporativo */
+        .navbar {
+            background: var(--navy-1);
+            color: #fff;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--navy-3);
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: #fff;
+            text-decoration: none;
+        }
+        .navbar-brand span { color: var(--azure-3); }
+
+        .back-nav {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+        .back-nav:hover { color: var(--azure-3); }
+
+        /* Contenedor Principal */
+        .container {
+            max-width: 680px;
+            width: 100%;
+            margin: 32px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        /* Hero / Header de Sección */
+        .hero-header {
+            background: linear-gradient(135deg, var(--navy-3) 0%, var(--navy-2) 100%);
+            color: #fff;
+            padding: 28px 32px;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 4px 20px rgba(15, 22, 30, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-header::after {
+            content: ""; position: absolute;
+            width: 200px; height: 200px; right: -50px; bottom: -80px;
+            background: radial-gradient(circle, rgba(62,142,208,.35) 0%, rgba(62,142,208,0) 70%);
+            pointer-events: none;
+        }
+        .eyebrow {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--azure-3);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .hero-header h1 {
+            font-family: var(--display);
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .hero-header p {
+            color: rgba(234,242,251,.75);
+            font-size: 0.92rem;
+        }
+
+        /* Tarjeta del Formulario */
+        .form-card {
+            background: var(--paper-2);
+            border: 1px solid var(--line);
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+            padding: 32px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+            margin-bottom: 40px;
+        }
+
+        .field-group-title {
+            font-family: var(--display);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy-2);
+            margin: 24px 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+        }
+        .field-group-title:first-of-type { margin-top: 0; }
+
+        .field { margin-bottom: 20px; }
+        .field label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            color: var(--char);
+            margin-bottom: 8px;
+        }
+        .field input, .field select {
+            width: 100%;
+            font-family: var(--body);
+            font-size: 0.98rem;
+            padding: 13px 16px;
+            border: 1.5px solid var(--line);
+            border-radius: 12px;
+            background: var(--paper-2);
+            color: var(--char);
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .field input:focus, .field select:focus {
+            outline: none;
+            border-color: var(--azure);
+            box-shadow: 0 0 0 4px rgba(62,142,208,.15);
+        }
+        .field input::placeholder { color: #A9B6C4; }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Toggles Modernos para Adicionales */
+        .toggle-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: var(--paper);
+            border: 1.5px solid var(--line);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .toggle-box:hover { border-color: var(--azure); }
+        .toggle-info { display: flex; flex-direction: column; }
+        .toggle-title { font-weight: 600; font-size: 0.92rem; color: var(--navy-1); }
+        .toggle-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+        /* Switch UI */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background-color: #C0CEDB;
+            transition: .25s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .25s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider { background-color: var(--azure-2); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Botón de Acción */
+        .btn-submit {
+            width: 100%;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 16px 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background: var(--azure-2);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 12px;
+            transition: transform .12s ease, box-shadow .2s, background .2s;
+            box-shadow: 0 6px 18px rgba(47,127,196,.35);
+        }
+        .btn-submit:hover:not(:disabled) {
+            background: var(--azure);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(62,142,208,.45);
+        }
+        .btn-submit:disabled { opacity: .65; cursor: not-allowed; box-shadow: none; }
+
+        /* Toast notifications */
+        #toast-wrap {
+            position: fixed; z-index: 999; bottom: 24px; left: 50%;
+            transform: translateX(-50%); display: flex; flex-direction: column;
+            gap: 10px; width: min(92%, 400px);
+        }
+        .toast {
+            padding: 14px 18px; border-radius: 12px; color: #fff;
+            font-size: .92rem; font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0,0,0,.18);
+            animation: fade .3s ease both;
+        }
+        .toast.ok  { background: var(--ok); }
+        .toast.err { background: var(--err); }
+        @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        .spin {
+            width: 18px; height: 18px; border-radius: 50%;
+            border: 2.5px solid rgba(255,255,255,.4);
+            border-top-color: #fff; animation: rot .8s linear infinite;
+        }
+        @keyframes rot { to { transform: rotate(360deg); } }
+
+        footer {
+            text-align: center; padding: 24px; font-size: 0.85rem;
+            color: var(--muted); border-top: 1px solid var(--line); margin-top: auto;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 0 12px; margin: 16px auto; }
+            .hero-header { padding: 20px 24px; }
+            .form-card { padding: 20px; }
+            .row { grid-template-columns: 1fr; gap: 0; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <a href="dashboard.html" class="back-link">← Volver al Panel</a>
-        <h2>Nueva Cotización (VID_RTCOT)</h2>
+    <header class="navbar">
+        <a href="dashboard.html" class="navbar-brand">
+            <span>ALO GROUP</span> · Portal Comercial
+        </a>
+        <a href="dashboard.html" class="back-nav">
+            ← Volver al Panel
+        </a>
+    </header>
 
-        <form id="cotizacion-form">
-            <div class="field">
-                <label for="cardCode">Código Cliente (SAP)</label>
-                <input id="cardCode" name="cardCode" type="text" placeholder="Ej: C76543210-9" required>
-            </div>
+    <main class="container">
+        
+        <div class="hero-header">
+            <div class="eyebrow">Gestión de Arriendos</div>
+            <h1>Nueva Cotización (VID_RTCOT)</h1>
+            <p>Ingresa los parámetros del equipo y adicionales para sincronizar con SAP Service Layer.</p>
+        </div>
 
-            <div class="field">
-                <label for="itemCode">Código de Equipo (CO%)</label>
-                <input id="itemCode" name="itemCode" type="text" placeholder="Ej: COP010203" required>
-            </div>
+        <div class="form-card">
+            <form id="cotizacion-form" novalidate>
+                
+                <div class="field-group-title">1. Datos de Cabecera</div>
 
-            <div class="row">
                 <div class="field">
-                    <label for="durQty">Días de Arriendo</label>
-                    <input id="durQty" name="durQty" type="number" min="1" value="1" required>
+                    <label for="cardCode">Código del Cliente (SAP)</label>
+                    <input id="cardCode" name="cardCode" type="text" placeholder="Ej: C76543210-9" required>
                 </div>
+
+                <div class="field-group-title">2. Equipo a Arrendar</div>
+
                 <div class="field">
-                    <label for="descP">Descuento (%)</label>
-                    <input id="descP" name="descP" type="number" min="0" max="100" value="0">
+                    <label for="itemCode">Código de Equipo (Familia CO%)</label>
+                    <input id="itemCode" name="itemCode" type="text" placeholder="Ej: COP010203" required>
                 </div>
-            </div>
 
-            <div class="field">
-                <label>Adicionales</label>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="incSeguro" checked>
-                    <label for="incSeguro">Incluir Seguro (SEG-DEF)</label>
+                <div class="row">
+                    <div class="field">
+                        <label for="durQty">Días de Arriendo</label>
+                        <input id="durQty" name="durQty" type="number" min="1" value="1" required>
+                    </div>
+                    <div class="field">
+                        <label for="descP">Descuento (%)</label>
+                        <input id="descP" name="descP" type="number" min="0" max="100" value="0" step="0.1">
+                    </div>
                 </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="incAlistamiento" checked>
-                    <label for="incAlistamiento">Incluir Alistamiento (zALI-DEF)</label>
-                </div>
-            </div>
 
-            <button type="submit" id="btn-submit" class="btn">Crear Cotización en SAP</button>
-        </form>
-    </div>
+                <div class="field-group-title">3. Adicionales de la Línea</div>
+
+                <label class="toggle-box" for="incSeguro">
+                    <div class="toggle-info">
+                        <span class="toggle-title">Incluir Seguro de Equipo</span>
+                        <span class="toggle-desc">Suma la cobertura calculada vía UF (SEG-DEF)</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="incSeguro" checked>
+                        <span class="slider"></span>
+                    </div>
+                </label>
+
+                <label class="toggle-box" for="incAlistamiento">
+                    <div class="toggle-info">
+                        <span class="toggle-title">Incluir Alistamiento</span>
+                        <span class="toggle-desc">Suma la preparación técnica del equipo (zALI-DEF)</span>
+                    </div>
+                    <div class="switch">
+                        <input type="checkbox" id="incAlistamiento" checked>
+                        <span class="slider"></span>
+                    </div>
+                </label>
+
+                <button type="submit" id="btn-submit" class="btn-submit">
+                    <span class="btn-label">Crear Cotización en SAP</span>
+                </button>
+            </form>
+        </div>
+
+    </main>
+
+    <div id="toast-wrap"></div>
+
+    <footer>
+        ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
+    </footer>
 
     <script>
-        // URL de tu webhook de n8n para crear la cotización
         const WEBHOOK_CREAR_COTIZACION = 'https://alogroup.app.n8n.cloud/webhook/sap/crearCotizacion';
+
+        function toast(message, ok) {
+            const wrap = document.getElementById('toast-wrap');
+            const el = document.createElement('div');
+            el.className = 'toast ' + (ok ? 'ok' : 'err');
+            el.textContent = message;
+            wrap.appendChild(el);
+            setTimeout(() => { el.remove(); }, 4000);
+        }
+
+        function btnBusy(btn, busy, busyText) {
+            if (busy) {
+                btn.dataset.label = btn.querySelector('.btn-label').textContent;
+                btn.innerHTML = '<span class="spin"></span><span class="btn-label">' + busyText + '</span>';
+                btn.disabled = true;
+            } else {
+                btn.innerHTML = '<span class="btn-label">' + (btn.dataset.label || '') + '</span>';
+                btn.disabled = false;
+            }
+        }
 
         document.getElementById('cotizacion-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-submit');
-            btn.disabled = true;
-            btn.textContent = 'Creando en SAP...';
+            
+            const cardCode = document.getElementById('cardCode').value.trim();
+            const itemCode = document.getElementById('itemCode').value.trim();
+            const durQty   = parseInt(document.getElementById('durQty').value, 10);
+            const descP    = parseFloat(document.getElementById('descP').value) || 0;
+
+            if (!cardCode || !itemCode || !durQty) {
+                toast('Por favor completa todos los campos requeridos.', false);
+                return;
+            }
+
+            btnBusy(btn, true, 'Procesando en SAP...');
 
             const payload = {
                 userEmail: sessionStorage.getItem('alo_user_email') || 'vendedor@alo-group.com',
-                cardCode: document.getElementById('cardCode').value.trim(),
-                itemCode: document.getElementById('itemCode').value.trim(),
-                durQty: parseInt(document.getElementById('durQty').value, 10),
-                descP: parseFloat(document.getElementById('descP').value) || 0,
+                cardCode: cardCode,
+                itemCode: itemCode,
+                durQty: durQty,
+                descP: descP,
                 incSeguro: document.getElementById('incSeguro').checked,
                 incAlistamiento: document.getElementById('incAlistamiento').checked
             };
@@ -95,19 +422,17 @@
                 });
 
                 const result = await response.json();
-                btn.disabled = false;
-                btn.textContent = 'Crear Cotización en SAP';
+                btnBusy(btn, false);
 
                 if (response.ok && result.success) {
-                    alert(`¡Cotización creada con éxito!\nDocEntry: ${result.docEntry}\nDocNum: ${result.docNum}`);
-                    window.location.href = 'dashboard.html';
+                    toast(`¡Cotización N° ${result.docNum} creada exitosamente en SAP!`, true);
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
                 } else {
-                    alert('Error al crear la cotización: ' + (result.message || 'Error desconocido'));
+                    toast('Error SAP: ' + (result.message || 'No se pudo crear el documento.'), false);
                 }
             } catch (err) {
-                btn.disabled = false;
-                btn.textContent = 'Crear Cotización en SAP';
-                alert('No se pudo conectar con el servidor.');
+                btnBusy(btn, false);
+                toast('Error de conexión con el webhook de n8n.', false);
             }
         });
     </script>
