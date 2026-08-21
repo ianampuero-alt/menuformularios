@@ -692,6 +692,7 @@
 
     <div id="toast-wrap"></div>
 
+    <script src="js/app.js"></script>
     <script>
         /* ===== Endpoints n8n ===== */
         const WEBHOOK_PROCESS_EMAIL = 'https://alogroup.app.n8n.cloud/webhook/sap/processEmail';
@@ -879,6 +880,12 @@
 
                     sessionStorage.setItem('sapClientData', JSON.stringify(result.data));
                     sessionStorage.setItem('sapRut', userRutGlobal);
+                    // Propagar al vocabulario unificado que usa el lado interno.
+                    if (window.app) window.app.session.setCliente({
+                        rut: userRutGlobal,
+                        nombre: (result.data || {}).CardName,
+                        cardCode: (result.data || {}).CardCode
+                    });
 
                     setTimeout(() => { window.location.href = 'menucliente.html'; }, 1000);
                 } else {
@@ -959,8 +966,15 @@
                         document.getElementById('worker-form-container').classList.add('hide');
                         document.getElementById('worker-success-container').classList.remove('hide');
 
+                        // Contexto completo del vendedor. Antes solo se guardaban
+                        // email y rol, por eso cotizacion.html nunca autocompletaba
+                        // el vendedor ni la sucursal.
+                        const d = result.data || {};
                         sessionStorage.setItem('alo_user_email', workerEmailGlobal);
-                        sessionStorage.setItem('alo_user_role', result.data?.Role || 'comercial');
+                        sessionStorage.setItem('alo_user_role', d.Role || 'comercial');
+                        sessionStorage.setItem('alo_user_name', d.SalesEmployeeName || d.Name || workerEmailGlobal.split('@')[0]);
+                        sessionStorage.setItem('alo_sales_person', d.SalesPersonCode || d.SalesEmployeeCode || '');
+                        sessionStorage.setItem('alo_sucursal', d.Sucursal || d.U_Sucursal || d.Territory || '');
 
                         setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
                     } else {

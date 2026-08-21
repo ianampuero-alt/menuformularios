@@ -253,10 +253,16 @@
                 <div class="badge">Arriendos</div>
             </a>
 
-            <a href="#" class="action-card sales disabled">
+            <a href="Oferta.html" class="action-card sales">
                 <h3>Oferta de Ventas</h3>
                 <p>Crea cotizaciones directas para la venta de equipos, repuestos o servicios (Sales Quotation).</p>
-                <div class="badge">Próximamente</div>
+                <div class="badge">Ventas</div>
+            </a>
+
+            <a href="historicoc.html" class="action-card">
+                <h3>Situación Comercial</h3>
+                <p>Estado de cuenta, facturas pendientes, equipos en faena e histórico de solicitudes del cliente.</p>
+                <div class="badge">Consulta</div>
             </a>
         </div>
     </main>
@@ -265,14 +271,17 @@
         ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
     </footer>
 
+    <script src="js/app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const userEmail = sessionStorage.getItem('alo_user_email');
             const userName = sessionStorage.getItem('alo_user_name') || sessionStorage.getItem('alo_sales_person') || userEmail;
             const userRole = sessionStorage.getItem('alo_user_role') || 'Comercial';
 
+            // Guardia de sesion real (antes estaba comentada).
             if (!userEmail) {
-                // window.location.href = 'index.html';
+                window.location.href = 'index.html';
+                return;
             }
 
             document.getElementById('welcome-title').textContent = '¡Hola, ' + (userName || 'Vendedor') + '!';
@@ -283,6 +292,7 @@
             window.location.href = 'index.html';
         }
     </script>
+    <script>app.checkSession();</script>
 </body>
 
 </html>
