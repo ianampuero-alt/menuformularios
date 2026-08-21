@@ -392,18 +392,18 @@
                     <label for="sucursal">Sucursal / Territorio</label>
                     <select id="sucursal" name="sucursal" required>
                         <option value="">Seleccionar sucursal…</option>
-                        <option value="SANTIAGO">Santiago</option>
-                        <option value="ANTOFAGASTA">Antofagasta</option>
-                        <option value="CONCEPCION">Concepción</option>
-                        <option value="VINA">Viña del Mar</option>
-                        <option value="PUERTO_MONTT">Puerto Montt</option>
+                        <!-- El resto se carga desde /webhook/catalogos (hoja "sucursales") -->
                     </select>
                 </div>
 
                 <div class="field-group-title">3. Equipo a Arrendar</div>
                 <div class="field">
-                    <label for="itemCode">Código de Equipo (Familia CO%)</label>
-                    <input id="itemCode" name="itemCode" type="text" placeholder="Ej: COP010203" required>
+                    <label for="itemCode">Modelo de Equipo</label>
+                    <select id="itemCode" name="itemCode" required>
+                        <option value="">Seleccionar modelo de equipo…</option>
+                        <!-- Los modelos se cargan desde /webhook/catalogos (hoja "equipos"),
+                             agrupados por la columna "categoria". -->
+                    </select>
                 </div>
                 <div class="row">
                     <div class="field">
