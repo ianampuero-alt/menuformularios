@@ -7,9 +7,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --navy-1: #0F161E;
@@ -162,6 +160,21 @@
         }
         .hero-header h1 { font-family: var(--display); font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; }
         .hero-header p { color: rgba(234, 242, 251, .75); font-size: 0.92rem; }
+        
+        .opp-banner {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(240, 133, 30, 0.12);
+            border: 1px solid var(--amber);
+            color: var(--char);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.88rem;
+        }
+        .opp-banner i { color: var(--amber); }
+
         .form-card {
             background: var(--paper-2);
             border: 1px solid var(--line);
@@ -355,7 +368,14 @@
             <h1>Nueva Cotización (VID_RTCOT)</h1>
             <p>Ingresa los parámetros del equipo y adicionales para sincronizar con SAP Service Layer.</p>
         </div>
+
         <div class="form-card">
+            <!-- Banner Informativo de Oportunidad -->
+            <div id="opp-banner" class="opp-banner">
+                <i class="material-icons">extension</i>
+                <span>Generando cotización vinculada a la <strong>Oportunidad N° <span id="opp-id-display">--</span></strong></span>
+            </div>
+
             <form id="cotizacion-form" novalidate>
                 <div class="field-group-title">1. Datos de Cabecera</div>
                 <div class="field">
@@ -432,9 +452,7 @@
     </footer>
     <script>
         // ====== CONFIGURACIÓN ======
-        // URL base del n8n (cámbiala aquí si migras de instancia).
         const N8N_BASE_URL = 'https://alogroup.app.n8n.cloud';
-        // Ruta del webhook del workflow (nodo "Webhook Entrada": path = cotizaciones/procesar).
         const WEBHOOK_PATH = '/webhook/cotizaciones/procesar';
         const WEBHOOK_COTIZACION = N8N_BASE_URL + WEBHOOK_PATH;
         // ============================
@@ -445,13 +463,14 @@
             window.location.replace('dashboard.html');
         });
 
-        // Auto-completar cliente/vendedor desde sessionStorage
+        // Auto-completar cliente/vendedor y detectar contexto de Oportunidad
         document.addEventListener('DOMContentLoaded', () => {
             const clientName = sessionStorage.getItem('alo_client_name');
             const cardCode = sessionStorage.getItem('alo_card_code');
             const rut = sessionStorage.getItem('alo_client_rut');
             const userEmail = sessionStorage.getItem('alo_user_email');
             const sucursal = sessionStorage.getItem('alo_sucursal');
+            const opprId = sessionStorage.getItem('alo_oppr_id');
 
             if (clientName) {
                 document.getElementById('display-client-name').textContent = clientName;
@@ -469,6 +488,12 @@
             }
             if (sucursal) {
                 document.getElementById('sucursal').value = sucursal;
+            }
+            
+            // Mostrar Banner si viene desde Oportunidades
+            if (opprId) {
+                document.getElementById('opp-banner').style.display = 'flex';
+                document.getElementById('opp-id-display').textContent = opprId;
             }
         });
 
@@ -508,6 +533,7 @@
             const itemCode = document.getElementById('itemCode').value.trim();
             const durQty = parseInt(document.getElementById('durQty').value, 10);
             const descP = parseFloat(document.getElementById('descP').value) || 0;
+            const opprIdStored = sessionStorage.getItem('alo_oppr_id');
 
             if (!cardCode || !vendedorEmail || !sucursal || !itemCode || !durQty) {
                 toast('Por favor completa todos los campos requeridos.', false);
@@ -516,10 +542,6 @@
 
             btnBusy(btn, true, 'Procesando en SAP...');
 
-            // Payload alineado al pipeline del workflow:
-            // 01 Validar Solicitud / 02 Identidad (vendedor) / 03 Territorio (sucursal) /
-            // 04 Cliente (cardCode) / 05 Arriendo (itemCode, durQty, descP) /
-            // 06 Seguros / 07 Alistamientos (flags).
             const payload = {
                 userEmail: vendedorEmail,
                 vendedorEmail: vendedorEmail,
@@ -530,7 +552,8 @@
                 durQty: durQty,
                 descP: descP,
                 incSeguro: document.getElementById('incSeguro').checked,
-                incAlistamiento: document.getElementById('incAlistamiento').checked
+                incAlistamiento: document.getElementById('incAlistamiento').checked,
+                opprId: opprIdStored ? parseInt(opprIdStored, 10) : null
             };
 
             try {
@@ -545,12 +568,14 @@
 
                 btnBusy(btn, false);
 
-                // El nodo "¿Continuar Pipeline?" puede devolver "Respuesta Detenida"
-                // con httpStatus 409 y _control.continue === false.
                 const detenido = result && result._control && result._control.continue === false;
 
                 if (response.ok && !detenido) {
                     const docNum = result.docNum || (result.data && result.data.docNum) || '';
+                    
+                    // Limpiar el contexto de Oportunidad tras crear la cotización
+                    sessionStorage.removeItem('alo_oppr_id');
+                    
                     toast('¡Cotización' + (docNum ? ' N° ' + docNum : '') + ' creada exitosamente en SAP!', true);
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
                 } else {
