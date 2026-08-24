@@ -212,7 +212,11 @@
             Session.set(K.cardCode, cc);
             Session.set(K.clientName, nom);
             Session.set(K.legacyRut, rut);
-            Session.set(K.legacyData, JSON.stringify({ CardCode: cc, CardName: nom, LicTradNum: rut }));
+            // No pisar sapClientData si ya tiene el objeto completo de SAP
+            // (Industria/Direccion/Contactos); solo crear el fallback si no existe.
+            if (!Session.get(K.legacyData)) {
+                Session.set(K.legacyData, JSON.stringify({ CardCode: cc, CardName: nom, LicTradNum: rut }));
+            }
         },
 
         logout: function () {
