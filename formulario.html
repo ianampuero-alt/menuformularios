@@ -489,7 +489,14 @@
     function fillForm(data) {
         console.log('[formulario v2] datos recibidos:', data);
         document.getElementById('RazonSocial').value = data.CardName || '';
-        document.getElementById('Industria').value = data.Industria || '';
+
+        const industriaSel = document.getElementById('Industria');
+        const industriaValor = (data.Industria || '').trim();
+        if (industriaValor && ![...industriaSel.options].some(o => o.value === industriaValor)) {
+            // El giro que viene de SAP no coincide con ninguna opción fija: la agregamos.
+            industriaSel.add(new Option(industriaValor, industriaValor));
+        }
+        industriaSel.value = industriaValor;
         
         if (data.Direccion) {
             document.getElementById('CalleNumero').value = data.Direccion.Calle || '';
