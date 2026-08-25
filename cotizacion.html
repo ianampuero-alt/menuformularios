@@ -383,7 +383,7 @@
                     <input id="cardCode" name="cardCode" type="text" placeholder="Ej: C76543210-9" required>
                 </div>
 
-                <div class="field-group-title">2. Vendedor y Territorio</div>
+                <div class="field-group-title">2. Vendedor, Territorio y Destino</div>
                 <div class="field">
                     <label for="vendedorEmail">Correo del Vendedor</label>
                     <input id="vendedorEmail" name="vendedorEmail" type="email" placeholder="vendedor@alogroup.cl" required>
@@ -392,60 +392,89 @@
                     <label for="sucursal">Sucursal / Territorio</label>
                     <select id="sucursal" name="sucursal" required>
                         <option value="">Seleccionar sucursal…</option>
-                        <!-- El resto se carga desde /webhook/catalogos (hoja "sucursales") -->
-                    </select>
-                </div>
-
-                <div class="field-group-title">3. Equipo a Arrendar</div>
-                <div class="field">
-                    <label for="itemCode">Modelo de Equipo</label>
-                    <select id="itemCode" name="itemCode" required>
-                        <option value="">Seleccionar modelo de equipo…</option>
-                        <!-- Los modelos se cargan desde /webhook/catalogos (hoja "equipos"),
-                             agrupados por la columna "categoria". -->
+                        <!-- Se carga desde /webhook/catalogos (hoja "sucursales") -->
                     </select>
                 </div>
                 <div class="row">
                     <div class="field">
-                        <label for="durQty">Días de Arriendo</label>
-                        <input id="durQty" name="durQty" type="number" min="1" value="1" required>
+                        <label for="destinoRegion">Región de Destino (dónde van las máquinas)</label>
+                        <select id="destinoRegion" name="destinoRegion" required>
+                            <option value="">Seleccionar región…</option>
+                            <!-- Se carga desde /webhook/catalogos (comunasPorRegion) -->
+                        </select>
                     </div>
                     <div class="field">
-                        <label for="descP">Descuento (%)</label>
-                        <input id="descP" name="descP" type="text" inputmode="numeric" maxlength="2" value="0"
-                            placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 2);">
-                        <span style="display:block; margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
-                            Máximo 2 dígitos (0 a 99%). Sujeto a límite autorizado en SAP.
-                        </span>
+                        <label for="destinoLugar">Lugar / Dirección de la Obra</label>
+                        <input id="destinoLugar" name="destinoLugar" type="text" placeholder="Ej: Talinay 719" required>
                     </div>
                 </div>
-                <div class="field-group-title">4. Adicionales de la Línea</div>
-                <label class="toggle-box" for="incSeguro">
-                    <div class="toggle-info">
-                        <span class="toggle-title">Incluir Seguro de Equipo</span>
-                        <span class="toggle-desc">Suma la cobertura calculada vía UF (SEG-DEF)</span>
-                    </div>
-                    <div class="switch">
-                        <input type="checkbox" id="incSeguro" checked>
-                        <span class="slider"></span>
-                    </div>
-                </label>
-                <label class="toggle-box" for="incAlistamiento">
-                    <div class="toggle-info">
-                        <span class="toggle-title">Incluir Alistamiento</span>
-                        <span class="toggle-desc">Suma la preparación técnica del equipo (zALI-DEF)</span>
-                    </div>
-                    <div class="switch">
-                        <input type="checkbox" id="incAlistamiento" checked>
-                        <span class="slider"></span>
-                    </div>
-                </label>
+
+                <div class="field-group-title">3. Equipos a Arrendar</div>
+                <div id="lineas-equipos"></div>
+                <button type="button" id="btn-add-linea" class="btn-back"
+                    style="background:rgba(62,142,208,.1)!important; border-color:var(--azure)!important; color:var(--azure-2)!important; margin-bottom:24px;">
+                    <i class="material-icons">add</i> Agregar otro equipo
+                </button>
+
                 <button type="submit" id="btn-submit" class="btn-submit">
                     <span class="btn-label">Crear Cotización en SAP</span>
                 </button>
             </form>
         </div>
     </main>
+
+    <!-- Plantilla de una línea de equipo (no se envía, se clona por JS) -->
+    <template id="tpl-linea-equipo">
+        <div class="linea-equipo" style="border:1.5px solid var(--line); border-radius:12px; padding:20px; margin-bottom:16px; position:relative;">
+            <button type="button" class="btn-quitar-linea" title="Quitar este equipo"
+                style="display:none; position:absolute; top:14px; right:14px; background:none; border:none; color:var(--err); cursor:pointer;">
+                <i class="material-icons">close</i>
+            </button>
+            <div class="field">
+                <label>Modelo de Equipo</label>
+                <select class="itemCode" required>
+                    <option value="">Seleccionar modelo de equipo…</option>
+                    <!-- Se carga desde /webhook/catalogos (hoja "equipos"), agrupado por categoría -->
+                </select>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label>Días de Arriendo</label>
+                    <input class="durQty" type="number" min="3" value="3" required>
+                    <span style="display:block; margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
+                        Mínimo 3 días. Sin máximo.
+                    </span>
+                </div>
+                <div class="field">
+                    <label>Descuento (%)</label>
+                    <input class="descP" type="text" inputmode="numeric" maxlength="2" value="0" placeholder="0">
+                    <span style="display:block; margin-top: 6px; font-size: 0.78rem; color: var(--muted);">
+                        Máximo 90%. Sujeto a límite autorizado en SAP.
+                    </span>
+                </div>
+            </div>
+            <label class="toggle-box incSeguro-box">
+                <div class="toggle-info">
+                    <span class="toggle-title">Incluir Seguro de Equipo</span>
+                    <span class="toggle-desc">Suma la cobertura calculada vía UF (SEG-DEF)</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" class="incSeguro" checked>
+                    <span class="slider"></span>
+                </div>
+            </label>
+            <label class="toggle-box incAlistamiento-box">
+                <div class="toggle-info">
+                    <span class="toggle-title">Incluir Alistamiento</span>
+                    <span class="toggle-desc">Suma la preparación técnica del equipo (zALI-DEF)</span>
+                </div>
+                <div class="switch">
+                    <input type="checkbox" class="incAlistamiento" checked>
+                    <span class="slider"></span>
+                </div>
+            </label>
+        </div>
+    </template>
     <div id="toast-wrap"></div>
     <footer>
         ALO Group © 2026 · Todos los derechos reservados | Soporte TI: soporte@alogroup.cl
@@ -456,7 +485,10 @@
         const N8N_BASE_URL = 'https://alogroup.app.n8n.cloud';
         const WEBHOOK_PATH = '/webhook/cotizaciones/procesar';
         const WEBHOOK_COTIZACION = N8N_BASE_URL + WEBHOOK_PATH;
+        const WEBHOOK_CATALOGOS = N8N_BASE_URL + '/webhook/catalogos';
         // ============================
+
+        let CATALOGO = null; // se llena con la respuesta de /webhook/catalogos
 
         // Interceptar retroceso -> Dashboard
         history.pushState(null, document.title, location.href);
@@ -464,13 +496,114 @@
             window.location.replace('dashboard.html');
         });
 
+        /** Llena el <select id="itemCode"> de una línea con los equipos, agrupados por categoría. */
+        function llenarSelectEquipos(select) {
+            const porCat = (CATALOGO && CATALOGO.equiposPorCategoria) || {};
+            const cats = Object.keys(porCat).sort();
+            select.innerHTML = '<option value="">Seleccionar modelo de equipo…</option>';
+            cats.forEach(cat => {
+                const grp = document.createElement('optgroup');
+                grp.label = cat;
+                (porCat[cat] || []).forEach(eq => {
+                    const opt = document.createElement('option');
+                    opt.value = eq.item_code;
+                    opt.textContent = eq.nombre || eq.item_code;
+                    grp.appendChild(opt);
+                });
+                select.appendChild(grp);
+            });
+        }
+
+        function llenarSelectSucursales(select) {
+            // Sucursal / Territorio se llena desde el maestro de Territorios de SAP
+            // (data.territorios: {id, descripcion}), no desde la hoja "sucursales".
+            const territorios = (CATALOGO && CATALOGO.territorios) || [];
+            select.innerHTML = '<option value="">Seleccionar sucursal / territorio…</option>';
+            territorios.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = String(t.id);
+                opt.textContent = t.descripcion || String(t.id);
+                select.appendChild(opt);
+            });
+        }
+
+        function llenarSelectRegiones(select) {
+            const porRegion = (CATALOGO && CATALOGO.comunasPorRegion) || {};
+            const regiones = Object.keys(porRegion).sort();
+            select.innerHTML = '<option value="">Seleccionar región…</option>';
+            regiones.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                select.appendChild(opt);
+            });
+        }
+
+        /** Crea una nueva línea de equipo a partir del <template>, ya con los selects llenos. */
+        function agregarLineaEquipo() {
+            const tpl = document.getElementById('tpl-linea-equipo');
+            const cont = document.getElementById('lineas-equipos');
+            const frag = tpl.content.cloneNode(true);
+            const linea = frag.querySelector('.linea-equipo');
+
+            llenarSelectEquipos(linea.querySelector('.itemCode'));
+
+            const descP = linea.querySelector('.descP');
+            descP.addEventListener('input', () => {
+                let v = descP.value.replace(/[^0-9]/g, '').slice(0, 2);
+                if (parseInt(v, 10) > 90) v = '90';
+                descP.value = v;
+            });
+
+            linea.querySelector('.btn-quitar-linea').addEventListener('click', () => {
+                linea.remove();
+                actualizarBotonesQuitar();
+            });
+
+            cont.appendChild(linea);
+            actualizarBotonesQuitar();
+        }
+
+        /** Solo se puede quitar una línea si hay más de una. */
+        function actualizarBotonesQuitar() {
+            const lineas = document.querySelectorAll('#lineas-equipos .linea-equipo');
+            lineas.forEach(l => {
+                l.querySelector('.btn-quitar-linea').style.display = lineas.length > 1 ? 'block' : 'none';
+            });
+        }
+
+        document.getElementById('btn-add-linea').addEventListener('click', agregarLineaEquipo);
+
+        async function cargarCatalogos() {
+            try {
+                const res = await fetch(WEBHOOK_CATALOGOS);
+                const body = await res.json();
+                if (!body || body.success === false || !body.data) {
+                    toast(body && body.message ? body.message : 'No se pudo cargar el catálogo de sucursales/equipos.', false);
+                    return;
+                }
+                CATALOGO = body.data;
+
+                llenarSelectSucursales(document.getElementById('sucursal'));
+                llenarSelectRegiones(document.getElementById('destinoRegion'));
+
+                // Reaplicar la sucursal guardada en sesión, ahora que el select ya tiene opciones.
+                const sucursalGuardada = sessionStorage.getItem('alo_sucursal');
+                if (sucursalGuardada) document.getElementById('sucursal').value = sucursalGuardada;
+
+                // Llenar los selects de equipo de las líneas que ya existan en pantalla.
+                document.querySelectorAll('#lineas-equipos .itemCode').forEach(llenarSelectEquipos);
+            } catch (err) {
+                toast('Error de conexión al cargar catálogo de sucursales y equipos.', false);
+            }
+        }
+
         // Auto-completar cliente/vendedor y detectar contexto de Oportunidad
         document.addEventListener('DOMContentLoaded', () => {
             const clientName = sessionStorage.getItem('alo_client_name');
             const cardCode = sessionStorage.getItem('alo_card_code');
             const rut = sessionStorage.getItem('alo_client_rut');
             const userEmail = sessionStorage.getItem('alo_user_email');
-            const sucursal = sessionStorage.getItem('alo_sucursal');
             const opprId = sessionStorage.getItem('alo_oppr_id');
 
             if (clientName) {
@@ -487,15 +620,15 @@
             if (userEmail) {
                 document.getElementById('vendedorEmail').value = userEmail;
             }
-            if (sucursal) {
-                document.getElementById('sucursal').value = sucursal;
-            }
-            
+
             // Mostrar Banner si viene desde Oportunidades
             if (opprId) {
                 document.getElementById('opp-banner').style.display = 'flex';
                 document.getElementById('opp-id-display').textContent = opprId;
             }
+
+            agregarLineaEquipo(); // primera línea de equipo, siempre visible
+            cargarCatalogos();
         });
 
         // Reflejar CardCode en el badge al editar
@@ -531,13 +664,33 @@
             const cardCode = document.getElementById('cardCode').value.trim();
             const vendedorEmail = document.getElementById('vendedorEmail').value.trim();
             const sucursal = document.getElementById('sucursal').value;
-            const itemCode = document.getElementById('itemCode').value.trim();
-            const durQty = parseInt(document.getElementById('durQty').value, 10);
-            const descP = parseFloat(document.getElementById('descP').value) || 0;
+            const destinoRegion = document.getElementById('destinoRegion').value;
+            const destinoLugar = document.getElementById('destinoLugar').value.trim();
             const opprIdStored = sessionStorage.getItem('alo_oppr_id');
 
-            if (!cardCode || !vendedorEmail || !sucursal || !itemCode || !durQty) {
+            const lineasEl = document.querySelectorAll('#lineas-equipos .linea-equipo');
+            const lineas = Array.from(lineasEl).map(l => ({
+                itemCode: l.querySelector('.itemCode').value.trim(),
+                durQty: parseInt(l.querySelector('.durQty').value, 10),
+                descP: parseFloat(l.querySelector('.descP').value) || 0,
+                incSeguro: l.querySelector('.incSeguro').checked,
+                incAlistamiento: l.querySelector('.incAlistamiento').checked
+            }));
+
+            if (!cardCode || !vendedorEmail || !sucursal || !destinoRegion || !destinoLugar) {
                 toast('Por favor completa todos los campos requeridos.', false);
+                return;
+            }
+            if (!lineas.length || lineas.some(l => !l.itemCode)) {
+                toast('Selecciona el modelo de equipo en cada línea.', false);
+                return;
+            }
+            if (lineas.some(l => !l.durQty || l.durQty < 3)) {
+                toast('Los días de arriendo deben ser 3 o más en cada equipo.', false);
+                return;
+            }
+            if (lineas.some(l => l.descP > 90)) {
+                toast('El descuento máximo permitido es 90%.', false);
                 return;
             }
 
@@ -549,11 +702,8 @@
                 sucursal: sucursal,
                 territorio: sucursal,
                 cardCode: cardCode,
-                itemCode: itemCode,
-                durQty: durQty,
-                descP: descP,
-                incSeguro: document.getElementById('incSeguro').checked,
-                incAlistamiento: document.getElementById('incAlistamiento').checked,
+                destino: { region: destinoRegion, lugar: destinoLugar },
+                lineas: lineas,
                 opprId: opprIdStored ? parseInt(opprIdStored, 10) : null
             };
 
