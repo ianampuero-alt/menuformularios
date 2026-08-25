@@ -506,8 +506,10 @@
         }
 
         function llenarSelectSucursales(select) {
-            // Sucursal / Territorio se llena desde el maestro de Territorios de SAP
-            // (data.territorios: {id, descripcion}), no desde la hoja "sucursales".
+            // Se llena desde el maestro de Territorios de SAP (data.territorios:
+            // {id, descripcion}), ya filtrado en el backend a solo comunas (no regiones).
+            // La zona Norte/Resto para el cálculo de precios se determina comparando
+            // esa misma descripción contra Iquique/Antofagasta/Copiapó.
             const territorios = (CATALOGO && CATALOGO.territorios) || [];
             select.innerHTML = '<option value="">Seleccionar sucursal / territorio…</option>';
             territorios.forEach(t => {
