@@ -444,26 +444,12 @@
                     </span>
                 </div>
             </div>
-            <label class="toggle-box incSeguro-box">
+            <div class="toggle-box" style="cursor: default;">
                 <div class="toggle-info">
-                    <span class="toggle-title">Incluir Seguro de Equipo</span>
-                    <span class="toggle-desc">Suma la cobertura calculada vía UF (SEG-DEF)</span>
+                    <span class="toggle-title">Seguro de Equipo + Alistamiento incluidos</span>
+                    <span class="toggle-desc">Se suman siempre a toda cotización (seguro calculado vía UF, alistamiento con tarifa fija). No son opcionales.</span>
                 </div>
-                <div class="switch">
-                    <input type="checkbox" class="incSeguro" checked>
-                    <span class="slider"></span>
-                </div>
-            </label>
-            <label class="toggle-box incAlistamiento-box">
-                <div class="toggle-info">
-                    <span class="toggle-title">Incluir Alistamiento</span>
-                    <span class="toggle-desc">Suma la preparación técnica del equipo (zALI-DEF)</span>
-                </div>
-                <div class="switch">
-                    <input type="checkbox" class="incAlistamiento" checked>
-                    <span class="slider"></span>
-                </div>
-            </label>
+            </div>
         </div>
     </template>
     <div id="toast-wrap"></div>
@@ -652,8 +638,9 @@
                 itemCode: l.querySelector('.itemCode').value.trim(),
                 durQty: parseInt(l.querySelector('.durQty').value, 10),
                 descP: parseFloat(l.querySelector('.descP').value) || 0,
-                incSeguro: l.querySelector('.incSeguro').checked,
-                incAlistamiento: l.querySelector('.incAlistamiento').checked
+                // Seguro y alistamiento van siempre incluidos, sin opción de desmarcarlos.
+                incSeguro: true,
+                incAlistamiento: true
             }));
 
             if (!cardCode || !vendedorEmail || !sucursal || !destinoLugar) {
