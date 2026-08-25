@@ -395,18 +395,9 @@
                         <!-- Se carga desde /webhook/catalogos (hoja "sucursales") -->
                     </select>
                 </div>
-                <div class="row">
-                    <div class="field">
-                        <label for="destinoRegion">Región de Destino (dónde van las máquinas)</label>
-                        <select id="destinoRegion" name="destinoRegion" required>
-                            <option value="">Seleccionar región…</option>
-                            <!-- Se carga desde /webhook/catalogos (comunasPorRegion) -->
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label for="destinoLugar">Lugar / Dirección de la Obra</label>
-                        <input id="destinoLugar" name="destinoLugar" type="text" placeholder="Ej: Talinay 719" required>
-                    </div>
+                <div class="field">
+                    <label for="destinoLugar">Destino (dónde van las máquinas)</label>
+                    <input id="destinoLugar" name="destinoLugar" type="text" placeholder="Ej: Pje Nuevo 40 Nº602 Puerto Montt" required>
                 </div>
 
                 <div class="field-group-title">3. Equipos a Arrendar</div>
@@ -527,18 +518,6 @@
             });
         }
 
-        function llenarSelectRegiones(select) {
-            const porRegion = (CATALOGO && CATALOGO.comunasPorRegion) || {};
-            const regiones = Object.keys(porRegion).sort();
-            select.innerHTML = '<option value="">Seleccionar región…</option>';
-            regiones.forEach(r => {
-                const opt = document.createElement('option');
-                opt.value = r;
-                opt.textContent = r;
-                select.appendChild(opt);
-            });
-        }
-
         /** Crea una nueva línea de equipo a partir del <template>, ya con los selects llenos. */
         function agregarLineaEquipo() {
             const tpl = document.getElementById('tpl-linea-equipo');
@@ -585,7 +564,6 @@
                 CATALOGO = body.data;
 
                 llenarSelectSucursales(document.getElementById('sucursal'));
-                llenarSelectRegiones(document.getElementById('destinoRegion'));
 
                 // Reaplicar la sucursal guardada en sesión, ahora que el select ya tiene opciones.
                 const sucursalGuardada = sessionStorage.getItem('alo_sucursal');
@@ -664,7 +642,6 @@
             const cardCode = document.getElementById('cardCode').value.trim();
             const vendedorEmail = document.getElementById('vendedorEmail').value.trim();
             const sucursal = document.getElementById('sucursal').value;
-            const destinoRegion = document.getElementById('destinoRegion').value;
             const destinoLugar = document.getElementById('destinoLugar').value.trim();
             const opprIdStored = sessionStorage.getItem('alo_oppr_id');
 
@@ -677,7 +654,7 @@
                 incAlistamiento: l.querySelector('.incAlistamiento').checked
             }));
 
-            if (!cardCode || !vendedorEmail || !sucursal || !destinoRegion || !destinoLugar) {
+            if (!cardCode || !vendedorEmail || !sucursal || !destinoLugar) {
                 toast('Por favor completa todos los campos requeridos.', false);
                 return;
             }
@@ -702,7 +679,7 @@
                 sucursal: sucursal,
                 territorio: sucursal,
                 cardCode: cardCode,
-                destino: { region: destinoRegion, lugar: destinoLugar },
+                destino: { lugar: destinoLugar },
                 lineas: lineas,
                 opprId: opprIdStored ? parseInt(opprIdStored, 10) : null
             };
