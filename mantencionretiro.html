@@ -415,13 +415,11 @@
     var titulo = tipo === 'Retiro' ? "🚚 Solicitud de retiro" : "🔧 Solicitud de servicio";
     var nombreEquipo = datosEquipo.numInterno || datosEquipo.equipoCode;
 
-    var htmlTelefono = "";
-    if (tipo === 'Retiro') {
-      htmlTelefono = `
+    // AHORA EL TELÉFONO APARECE SIEMPRE (Quitamos el if tipo === 'Retiro')
+    var htmlTelefono = `
         <label class="form-label fw-bold">Teléfono de contacto *</label>
         <input id="swal-telefono" class="form-control mb-3" placeholder="Ej: +56912345678" type="tel">
-      `;
-    }
+    `;
 
     Swal.fire({
       title: titulo,
@@ -441,14 +439,12 @@
       focusConfirm: false,
       preConfirm: () => {
         const comentario = document.getElementById('swal-comentario').value.trim();
-        let telefono = "";
+        const telefono = document.getElementById('swal-telefono').value.trim();
 
-        if (tipo === 'Retiro') {
-          telefono = document.getElementById('swal-telefono').value.trim();
-          if (!telefono) {
-            Swal.showValidationMessage('El teléfono es obligatorio para el retiro');
-            return false;
-          }
+        // VALIDAMOS EL TELÉFONO PARA AMBAS SOLICITUDES
+        if (!telefono) {
+          Swal.showValidationMessage('El teléfono es obligatorio');
+          return false;
         }
 
         if (!comentario) {
