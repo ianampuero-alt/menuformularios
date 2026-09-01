@@ -177,6 +177,21 @@
     .btn-servicio { color: #B4610F; border: 1.5px solid var(--amber); background: transparent; }
     .btn-servicio:hover { background: var(--amber); color: #fff; }
 
+    /* Botón de acción deshabilitado (ej: servicio con selección múltiple) */
+    .btn-accion:disabled,
+    .btn-accion.disabled {
+      color: var(--muted) !important;
+      border-color: var(--line) !important;
+      background: #EEF1F5 !important;
+      cursor: not-allowed !important;
+      opacity: 1 !important;
+    }
+    .btn-accion:disabled:hover,
+    .btn-accion.disabled:hover {
+      background: #EEF1F5 !important;
+      color: var(--muted) !important;
+    }
+
     /* ----- Barra de acciones múltiples ----- */
     .contenedor-retiro-multiple {
       background: #EAF2FB; padding: 16px; border-radius: 12px; margin-top: 14px;
@@ -400,7 +415,7 @@
                   <button class="btn btn-sm btn-retiro btn-accion" onclick="solicitarSeleccionados('Retiro', ${index})">
                     <i class="bi bi-truck"></i> Retiro seleccionados
                   </button>
-                  <button class="btn btn-sm btn-servicio btn-accion" onclick="solicitarSeleccionados('Mantenimiento', ${index})">
+                  <button class="btn btn-sm btn-servicio btn-accion" id="btnServMulti-${index}" onclick="solicitarSeleccionados('Mantenimiento', ${index})">
                     <i class="bi bi-wrench"></i> Servicio seleccionados
                   </button>
                 </div>
@@ -489,6 +504,19 @@
         btn.innerHTML = '<i class="bi bi-x-square"></i> Quitar selección';
       } else {
         btn.innerHTML = '<i class="bi bi-check2-square"></i> Seleccionar todos';
+      }
+    }
+
+    // El servicio/mantención solo aplica de a un equipo:
+    // si hay 2 o más marcados, deshabilitamos el botón de servicio múltiple.
+    var btnServ = document.getElementById(`btnServMulti-${indexContrato}`);
+    if (btnServ) {
+      if (marcados.length > 1) {
+        btnServ.disabled = true;
+        btnServ.title = 'El servicio/mantención solo puede solicitarse de a un equipo';
+      } else {
+        btnServ.disabled = false;
+        btnServ.title = '';
       }
     }
   }
