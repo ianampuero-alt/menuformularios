@@ -1,0 +1,2569 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "catalogos",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "1b577e4b-692e-40b9-ab42-f391199cabbc",
+      "name": "00 · Webhook",
+      "position": [
+        11584,
+        3024
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "notesInFlow": true,
+      "webhookId": "dc3152c6-f9d8-4eec-94d0-5ed2c7ab5489",
+      "notes": "BLOQUE 00 — 00 · Catálogos (catalogosalo + USUARIOS-ALO → /webhook/catalogos)\n"
+    },
+    {
+      "parameters": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1VYLFNktvmW4zaTHoshJyy96xwla1j9Z5i3sIsohZk9U/values:batchGet?ranges=comunas&ranges=sucursales&ranges=equipos&ranges=industrias&ranges=parametros&valueRenderOption=UNFORMATTED_VALUE",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fa8441a9-af56-44c7-ada1-782dbd141433",
+      "name": "00 · Leer catálogos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        11856,
+        3024
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "slaVuR4Jopj8nTrY",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "notes": "Libro 'catalogosalo'. Lee las 5 hojas en UNA llamada con values:batchGet. UNFORMATTED_VALUE hace que 25000 llegue como número y no como el texto \"25,000\"."
+    },
+    {
+      "parameters": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1snQtnDWzy2-7BI9l5xbxMzhAaS4hhrcTRI1Iah4Gk4s/values:batchGet?ranges=USUARIOS-DATOMAESTRO&valueRenderOption=UNFORMATTED_VALUE",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "dc248db5-bb01-4726-9047-ff9792e8508a",
+      "name": "00 · Leer usuarios",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12112,
+        3024
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "slaVuR4Jopj8nTrY",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "notes": "Libro 'USUARIOS-ALO'. Columnas: EMPRESAPAIS, NOMBRE_USUARIO, SUCURSAL, CORREO, NOMBRECARGO, TELEFONO, EMPLEADO_VENTAS, CODIGO_USUARIO, ZONA."
+    },
+    {
+      "parameters": {
+        "jsCode": "/* ---------------------------------------------------------------------------\n * Convierte la respuesta de values:batchGet en objetos por hoja.\n * batchGet devuelve matrices crudas: la primera fila son los encabezados.\n * ------------------------------------------------------------------------ */\n\nconst TABS = [\"comunas\", \"sucursales\", \"equipos\", \"industrias\", \"parametros\"];\n\n/** Matriz [[hdr],[fila],…] -> [{hdr: valor}] , saltando filas vacías. */\nfunction aObjetos(values) {\n  if (!Array.isArray(values) || values.length < 2) return [];\n  const hdr = (values[0] || []).map(h => String(h === null || h === undefined ? '' : h).trim());\n  const out = [];\n  for (let i = 1; i < values.length; i++) {\n    const row = values[i] || [];\n    // La hoja trae un bloque de NOTAS al final: se corta ahí.\n    if (String(row[0] || '').trim().toUpperCase() === 'NOTAS') break;\n    if (String(row[0] || '').trim().startsWith('•')) continue;\n    if (!row.some(c => c !== '' && c !== null && c !== undefined)) continue;\n    const o = {};\n    hdr.forEach((h, j) => { if (h) o[h] = row[j] !== undefined ? row[j] : ''; });\n    out.push(o);\n  }\n  return out;\n}\n\nfunction rangos(res, esperados) {\n  const vr = (res && res.valueRanges) || [];\n  const map = {};\n  esperados.forEach((name, k) => { map[name] = aObjetos((vr[k] || {}).values); });\n  return map;\n}\n\nconst resCat = $('00 · Leer catálogos').first().json;\nconst resUsr = $('00 · Leer usuarios').first().json;\nconst resTer = $('00 · Leer territorios').first().json;\n\nif (!resCat || !resCat.valueRanges) {\n  return [{ json: { success: false,\n    message: 'No se pudo leer el libro de catálogos. ' +\n      ((resCat && resCat.error && (resCat.error.message || resCat.error.status)) ||\n       'Revisa que la credencial de Google tenga acceso al libro.') } }];\n}\n\nconst hojas = rangos(resCat, TABS);\nconst usuarios = rangos(resUsr, ['USUARIOS-DATOMAESTRO'])['USUARIOS-DATOMAESTRO'];\n\n/* ---------------------------------------------------------------------------\n * Normalización numérica.\n * Con UNFORMATTED_VALUE los números llegan como números, pero si alguien\n * escribe la tarifa como texto (\"185.000\") esto lo rescata. Vacío es null,\n * NO cero: un cero silencioso valorizaría mal un documento.\n * ------------------------------------------------------------------------ */\nfunction num(v) {\n  if (v === null || v === undefined) return null;\n  if (typeof v === 'number') return isFinite(v) ? v : null;\n  let t = String(v).trim().replace(/[$\\s ]/g, '');\n  if (!t) return null;\n  const neg = /^-/.test(t);\n  t = t.replace(/^-/, '');\n  if (/^\\d{1,3}(\\.\\d{3})+$/.test(t))      t = t.replace(/\\./g, '');\n  else if (/^\\d{1,3}(,\\d{3})+$/.test(t)) t = t.replace(/,/g, '');\n  else if (/^\\d+,\\d{1,2}$/.test(t))      t = t.replace(',', '.');\n  const n = Number(t);\n  if (!isFinite(n)) return null;\n  return neg ? -n : n;\n}\n\nconst norm = (v) => String(v === undefined || v === null ? '' : v).trim();\nconst activa = (r) => norm(r.activo === undefined ? 'SI' : r.activo).toUpperCase() !== 'NO';\n\nconst NUMERICAS = { equipos: ['tarifa_diaria_clp', 'horas_min', 'seguro_uf_dia', 'alistamiento_clp'] };\n\nconst data = {};\nfor (const t of TABS) {\n  const cols = NUMERICAS[t] || [];\n  data[t] = (hojas[t] || []).filter(activa).map(r => {\n    if (!cols.length) return r;\n    const o = { ...r };\n    for (const c of cols) o[c] = num(o[c]);\n    return o;\n  });\n}\n\n/* ---------------------------------------------------------------------------\n * TERRITORIOS · fuente real del selector de sucursal/territorio (libro de SAP,\n * hoja \"Hoja 1\"). Reemplaza a la hoja \"sucursales\" de catalogosalo para este uso.\n * Se descartan las entradas meta (ID negativo: \"-Sin territorio-\", raíz -1)\n * y las marcadas Inactivo.\n * ------------------------------------------------------------------------ */\nconst terRows = rangos(resTer, ['Hoja 1'])['Hoja 1'];\nconst territorios = (terRows || [])\n  .filter(r => {\n    const inactivo = norm(r['Inactivo']).toUpperCase();\n    if (inactivo === 'S' || inactivo === 'SI' || inactivo === 'Y' || inactivo === 'YES') return false;\n    const id = num(r['ID territorio']);\n    return id !== null && id > 0;\n  })\n  .map(r => ({\n    id: num(r['ID territorio']),\n    descripcion: norm(r['Descripción']),\n  }));\ndata.territorios = territorios;\n\n/* ---------------------------------------------------------------------------\n * VENDEDORES · desde USUARIOS-DATOMAESTRO\n *\n * Es un maestro CORPORATIVO: mezcla ALOVENTAS, Argentina, Colombia, Logistic,\n * Panama, Paraguay, Peru y Rental. Tres trampas:\n *   1. EMPLEADO_VENTAS (SlpCode) es por base de SAP, no es único en la planilla:\n *      el código 36 existe en Argentina, Colombia y Perú a la vez.\n *   2. Hay correos repetidos entre empresas con códigos distintos.\n *   3. Muchas filas de VENDEDOR tienen EMPLEADO_VENTAS vacío.\n * Por eso: filtrar por EMPRESAPAIS, y si un correo sigue ambiguo, BLOQUEARLO.\n * ------------------------------------------------------------------------ */\nconst P = {};\n(data.parametros || []).forEach(r => {\n  if (!norm(r.clave)) return;\n  const n = num(r.valor);\n  P[norm(r.clave)] = (n !== null) ? n : r.valor;\n});\ndata.parametrosMap = P;\n\nconst EMPRESAS = norm(P.empresas_validas || 'Rental')\n  .split(',').map(x => x.trim().toUpperCase()).filter(Boolean);\n\nfunction limpiaCorreo(v) {\n  let m = norm(v).toLowerCase().replace(/[,;]+$/, '').replace(/\\s+/g, '');\n  m = m.replace('@alo_group.com', '@alo-group.com');\n  return /^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$/.test(m) ? m : '';\n}\nconst limpiaZona = (v) => norm(v).toUpperCase().replace(/^ZONA\\s+/, '');\n\nconst descartes = { sinCorreo: 0, correoInvalido: 0, otraEmpresa: 0 };\nconst candidatos = [];\nfor (const r of usuarios) {\n  const empresa = norm(r.EMPRESAPAIS).toUpperCase();\n  if (EMPRESAS.length && !EMPRESAS.includes(empresa)) { descartes.otraEmpresa++; continue; }\n  if (!norm(r.CORREO)) { descartes.sinCorreo++; continue; }\n  const email = limpiaCorreo(r.CORREO);\n  if (!email) { descartes.correoInvalido++; continue; }\n  const n = num(r.EMPLEADO_VENTAS);\n  candidatos.push({\n    email: email, nombre: norm(r.NOMBRE_USUARIO),\n    sales_person_code: (n !== null && n > 0) ? Math.round(n) : null,\n    empleado_ventas: norm(r.EMPLEADO_VENTAS), codigo_usuario: norm(r.CODIGO_USUARIO),\n    sucursal_raw: norm(r.SUCURSAL).toUpperCase(), zona: limpiaZona(r.ZONA),\n    cargo: norm(r.NOMBRECARGO).toUpperCase(), telefono: norm(r.TELEFONO),\n    empresa: empresa,\n  });\n}\n\nconst porCorreo = {};\nfor (const v of candidatos) (porCorreo[v.email] = porCorreo[v.email] || []).push(v);\n\nconst ambiguos = [], vendedores = [];\nfor (const email of Object.keys(porCorreo)) {\n  const rs = porCorreo[email];\n  const conCod = rs.filter(x => x.sales_person_code);\n  const codigos = [...new Set(conCod.map(x => x.sales_person_code))];\n  if (codigos.length > 1) {\n    ambiguos.push({ email: email, codigos: codigos,\n      detalle: conCod.map(x => x.empresa + '/' + x.sucursal_raw + '=' + x.sales_person_code) });\n    vendedores.push({ ...rs[0], sales_person_code: null, ambiguo: true, codigos_en_conflicto: codigos });\n    continue;\n  }\n  vendedores.push({ ...(conCod[0] || rs[0]), ambiguo: false });\n}\n\n// SUCURSAL del maestro -> código del catálogo, vía alias (se mantiene solo\n// como referencia interna de vendedores; el selector ya usa data.territorios).\nconst sucRows = data.sucursales || [];\nfunction resuelveSucursal(raw) {\n  if (!raw) return '';\n  const r = raw.toUpperCase().trim();\n  for (const s of sucRows) {\n    if (norm(s.codigo).toUpperCase() === r) return norm(s.codigo).toUpperCase();\n    const alias = norm(s.alias).toUpperCase().split(',').map(x => x.trim()).filter(Boolean);\n    if (alias.includes(r)) return norm(s.codigo).toUpperCase();\n  }\n  return '';\n}\nconst sinMapear = new Set();\nfor (const v of vendedores) {\n  v.sucursal = resuelveSucursal(v.sucursal_raw);\n  if (v.sucursal_raw && !v.sucursal) sinMapear.add(v.sucursal_raw);\n}\ndata.vendedores = vendedores;\n\n/* ---------------- índices derivados que consume el front ---------------- */\nconst porRegion = {}, ciudades = {};\n(data.comunas || []).forEach(r => {\n  if (!r.region) return;\n  (porRegion[r.region] = porRegion[r.region] || []).push(r.comuna);\n  const c = r.ciudad || r.comuna;\n  ciudades[r.region] = ciudades[r.region] || [];\n  if (!ciudades[r.region].includes(c)) ciudades[r.region].push(c);\n});\ndata.comunasPorRegion = porRegion;\ndata.ciudadesPorRegion = ciudades;\n\nconst porCat = {};\n(data.equipos || []).forEach(e => {\n  const cat = e.categoria || 'Otros';\n  const code = norm(e.item_code);\n  if (!code) return;\n  porCat[cat] = porCat[cat] || [];\n  if (!porCat[cat].some(x => x.item_code === code)) {\n    porCat[cat].push({ item_code: code, nombre: e.nombre || code, tarifa: e.tarifa_diaria_clp });\n  }\n});\ndata.equiposPorCategoria = porCat;\n\n/* ---------------------------- semáforo ---------------------------------- */\nconst sinTarifa = (data.equipos || [])\n  .filter(e => !(Number(e.tarifa_diaria_clp) > 0)).map(e => e.item_code);\nconst sinCodigo = vendedores.filter(v => !v.sales_person_code && !v.ambiguo).map(v => v.email);\n\nconst avisos = [];\nconst vacias = TABS.filter(t => !(data[t] || []).length);\nif (vacias.length) avisos.push('Hojas vacías o ilegibles: ' + vacias.join(', ') + '.');\nif (!territorios.length) avisos.push(\n  'El libro de Territorios no devolvió filas activas (revisa permisos y la hoja \"Hoja 1\").');\nif (!vendedores.length) avisos.push(\n  'Ningún usuario de USUARIOS-DATOMAESTRO para EMPRESAPAIS=' + EMPRESAS.join('/') + '.');\nif (sinTarifa.length) avisos.push(\n  sinTarifa.length + ' equipo(s) sin tarifa_diaria_clp: ' + sinTarifa.slice(0, 8).join(', ') +\n  (sinTarifa.length > 8 ? '…' : '') + '. No se pueden cotizar.');\nif (sinCodigo.length) avisos.push(\n  sinCodigo.length + ' persona(s) sin EMPLEADO_VENTAS: no podrán cotizar.');\nif (ambiguos.length) avisos.push(\n  ambiguos.length + ' correo(s) con DOS códigos distintos (' +\n  ambiguos.map(a => a.email).slice(0, 5).join(', ') + '): bloqueados hasta resolver.');\nif (!norm(P.empresas_validas)) avisos.push(\n  \"Falta el parámetro 'empresas_validas' en la hoja parametros. Asumiendo Rental.\");\n\nreturn [{ json: {\n  success: true,\n  generado: new Date().toISOString(),\n  conteo: { ...Object.fromEntries(TABS.map(t => [t, (data[t] || []).length])),\n            territorios: territorios.length, vendedores: vendedores.length },\n  avisos: avisos.length ? avisos : undefined,\n  _vendedores: {\n    filasLeidas: usuarios.length, empresasFiltradas: EMPRESAS, descartes: descartes,\n    correosUnicos: vendedores.length,\n    conCodigoValido: vendedores.filter(v => v.sales_person_code).length,\n    sinCodigo: sinCodigo.slice(0, 30), ambiguos: ambiguos.slice(0, 20),\n    sucursalesSinMapear: [...sinMapear],\n  },\n  data,\n} }];"
+      },
+      "id": "a37834ad-e570-41c2-9e42-b901e227bd8d",
+      "name": "00 · Armar catálogo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12624,
+        3024
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "1b13eae7-1770-4b73-a561-a34130238db4",
+      "name": "00 · Responder",
+      "position": [
+        12880,
+        3024
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cotizaciones/procesar",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "23b6723a-ffa4-4f13-a0a0-809a094d6a9c",
+      "name": "01 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        3696
+      ],
+      "notesInFlow": true,
+      "webhookId": "be701783-eab0-472f-8a0a-103222cd3a33",
+      "notes": "BLOQUE 01 — 01 · Cotización de arriendo (VID_RTCOT)\n"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "667342e3-be1e-4587-8518-ea24d9ea5bea",
+      "name": "01 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        11856,
+        3696
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/SBOBobService_GetCurrencyRate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('01 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"Currency\": \"UF\", \"Date\": \"{{ new Date().toISOString().slice(0,10).replace(/-/g,'') }}\" }",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "8fa03b69-9883-44df-b2cf-12cfe64d6c91",
+      "name": "01 · Consultar tasa UF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12112,
+        3696
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\n/** Trae los catálogos desde /webhook/catalogos (Google Sheets). */\nasync function getCatalogos() {\n  const r = await this.helpers.httpRequest({\n    method: 'GET', url: 'https://alogroup.app.n8n.cloud/webhook/catalogos', json: true,\n  });\n  if (!r || !r.data) throw new Error('El webhook /catalogos no devolvió datos.');\n  return r.data;\n}\n\nconst SAP_BASE = 'https://sap.alo-group.com:50000/b1s/v1';\n\n/** SELECT Price FROM ITM1 WHERE ItemCode=... AND PriceList=... (vía Service Layer). */\nasync function getItemPrice(ctx, itemCode, priceList, cookie) {\n  const r = await ctx.helpers.httpRequest({\n    method: 'GET',\n    url: SAP_BASE + \"/Items('\" + itemCode + \"')\",\n    qs: { '$select': 'ItemCode,ItemPrices' },\n    headers: { Cookie: cookie },\n    json: true,\n    skipSslCertificateValidation: true,\n  });\n  const entry = (r.ItemPrices || []).find(p => String(p.PriceList) === String(priceList));\n  return entry ? Number(entry.Price) || 0 : 0;\n}\n\n/** Datos de facturación del cliente: nombre, condición de pago, RUT y dirección\n * de facturación (bo_BillTo). Viene de BusinessPartners, no lo escribe el vendedor. */\nasync function getDatosFacturacion(ctx, cardCode, cookie) {\n  const bp = await ctx.helpers.httpRequest({\n    method: 'GET',\n    url: SAP_BASE + \"/BusinessPartners('\" + cardCode + \"')\",\n    qs: { '$select': 'CardCode,CardName,PayTermsGrpCode,FederalTaxID,BPAddresses' },\n    headers: { Cookie: cookie },\n    json: true,\n    skipSslCertificateValidation: true,\n  });\n  const billTo = (bp.BPAddresses || []).find(a => a.AddressType === 'bo_BillTo') || null;\n  let destFact = '', destFAddr = '';\n  if (billTo) {\n    destFact = billTo.AddressName || '';\n    let countryName = billTo.Country || '';\n    if (billTo.Country) {\n      try {\n        const pais = await ctx.helpers.httpRequest({\n          method: 'GET', url: SAP_BASE + \"/Countries('\" + billTo.Country + \"')\",\n          headers: { Cookie: cookie }, json: true, skipSslCertificateValidation: true,\n        });\n        countryName = pais.Name || billTo.Country;\n      } catch (err) { /* se queda con el código de país si Countries falla */ }\n    }\n    destFAddr = [billTo.Street, billTo.City, countryName].filter(Boolean).join(' ');\n  }\n  return {\n    cardName: bp.CardName || '',\n    condPago: bp.PayTermsGrpCode != null ? String(bp.PayTermsGrpCode) : '',\n    rut: bp.FederalTaxID || '',\n    destFact, destFAddr,\n  };\n}\n\nconst norm = (v) => String(v === undefined || v === null ? '' : v)\n  .trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// ---------- Tramos de días -> PriceList de SAP (confirmados contra Formatted Search real) ----------\nconst ZONA_NORTE = new Set(['IQUIQUE', 'ANTOFAGASTA', 'COPIAPO']);\nconst TRAMOS_EQUIPO = [\n  [1, 6, '6', '1'], [7, 14, '7', '2'], [15, 20, '8', '3'], [21, 29, '9', '4'], [30, Infinity, '10', '5'],\n];\nconst TRAMOS_SEGURO = [\n  [1, 6, '1'], [7, 13, '2'], [14, 20, '3'], [21, 29, '4'], [30, Infinity, '5'],\n];\nfunction priceListEquipo(dur, zonaNorte) {\n  for (const [lo, hi, zn, base] of TRAMOS_EQUIPO) if (dur >= lo && dur <= hi) return zonaNorte ? zn : base;\n  return null;\n}\nfunction priceListSeguro(dur) {\n  for (const [lo, hi, l] of TRAMOS_SEGURO) if (dur >= lo && dur <= hi) return l;\n  return null;\n}\n\nconst body = $('01 · Webhook').first().json.body || {};\nconst ufRes = $('01 · Consultar tasa UF').first().json;\nconst sapCookie = 'B1SESSION=' + $('01 · Abrir sesión SAP').first().json.SessionId;\n\nconst cat = await getCatalogos.call(this);\nconst P   = cat.parametrosMap || {};\n\n// ---------- entrada ----------\nconst cardCode        = body.cardCode || body.CardCode;\nconst vendedorEmail   = (body.vendedorEmail || body.userEmail || '').toLowerCase().trim();\nconst sucursalCod     = String(body.sucursal || body.Branch || '').trim();\nconst opprIdIn        = body.opprId || body.OpprId || null;\n\n// Destino (dónde van las máquinas): texto libre -> U_Dest / U_DestAddr.\n// (U_DestFact/U_DestFAddr son la dirección de FACTURACIÓN del cliente en SAP,\n// se resuelven solas más abajo — no se tocan aquí.)\nconst destino    = body.destino || {};\nconst destLugar  = String(destino.lugar || body.destinoLugar || '').trim();\n\n// Líneas de equipo: acepta el formato nuevo (array `lineas`) y, por\n// compatibilidad, el formato viejo de un solo itemCode/durQty/descP.\nlet lineasIn = Array.isArray(body.lineas) ? body.lineas : null;\nif (!lineasIn) {\n  const legacyItem = body.itemCode || body.ItemCode;\n  if (legacyItem) {\n    lineasIn = [{\n      itemCode: legacyItem,\n      durQty: body.durQty !== undefined ? body.durQty : body.DurationQuantity,\n      descP: body.descP !== undefined ? body.descP : body.DiscountPercent,\n      incSeguro: body.incSeguro !== undefined ? body.incSeguro : true,\n      incAlistamiento: body.incAlistamiento !== undefined ? body.incAlistamiento : true,\n    }];\n  } else {\n    lineasIn = [];\n  }\n}\n\nconst stop = (msg) => [{ json: { success: false, _control: { continue: false, message: msg } } }];\n\n// ---------- 1. validación de forma ----------\nconst e = [];\nif (!cardCode)      e.push('falta el código de cliente');\nif (!vendedorEmail) e.push('falta el correo del vendedor');\nif (!sucursalCod)   e.push('falta la sucursal/territorio');\nif (!destLugar)     e.push('falta el destino (dirección) de las máquinas');\nif (!lineasIn.length) e.push('la cotización no tiene ningún equipo');\n\nconst DESCUENTO_MAX = 90; // tope duro de UI/negocio; independiente del parámetro de SAP.\n\nconst lineasParseadas = lineasIn.map((l, i) => {\n  const n = i + 1;\n  const itemCode = String(l.itemCode || l.ItemCode || '').trim();\n  const rawDur = (l.durQty !== undefined && l.durQty !== null && l.durQty !== '')\n               ? l.durQty : l.DurationQuantity;\n  const durQty = (rawDur === undefined || rawDur === null || rawDur === '')\n               ? NaN : parseInt(rawDur, 10);\n  const descP = parseFloat(l.descP !== undefined ? l.descP : l.DiscountPercent) || 0;\n  const incSeguro       = l.incSeguro !== undefined ? !!l.incSeguro : true;\n  const incAlistamiento = l.incAlistamiento !== undefined ? !!l.incAlistamiento : true;\n\n  if (!itemCode) e.push('línea ' + n + ': falta el código de equipo');\n  if (!Number.isFinite(durQty)) e.push('línea ' + n + ': falta la cantidad de días de arriendo');\n  else if (durQty < 3) e.push('línea ' + n + ': los días de arriendo deben ser 3 o más (mínimo 3, sin máximo)');\n  if (descP < 0 || descP > DESCUENTO_MAX)\n    e.push('línea ' + n + ': el descuento debe estar entre 0 y ' + DESCUENTO_MAX + '%');\n\n  return { itemCode, durQty, descP, incSeguro, incAlistamiento };\n});\n\nif (e.length) return stop('Validación fallida: ' + e.join(', ') + '.');\n\n// ---------- 2. vendedor: SIN código de SAP no se emite ----------\nconst vend = (cat.vendedores || []).find(v =>\n  String(v.email || '').toLowerCase().trim() === vendedorEmail);\nif (!vend) {\n  return stop('El correo ' + vendedorEmail + ' no aparece en la columna CORREO de ' +\n              'USUARIOS-DATOMAESTRO (libro USUARIOS-ALO). Agrégalo antes de cotizar.');\n}\nif (!vend.sales_person_code) {\n  return stop('El vendedor ' + vendedorEmail + ' está en USUARIOS-DATOMAESTRO, pero su ' +\n              'columna EMPLEADO_VENTAS no tiene un código numérico de SAP ' +\n              '(valor actual: \"' + (vend.empleado_ventas || '') + '\"). ' +\n              'Sin ese código la cotización quedaría a nombre de otra persona.');\n}\nconst slpCode = parseInt(vend.sales_person_code, 10);\n\n// ---------- 3. sucursal/territorio y zona ----------\nconst suc = (cat.territorios || []).find(t =>\n  String(t.id) === sucursalCod || norm(t.descripcion) === norm(sucursalCod));\nif (!suc) return stop('El territorio \"' + sucursalCod + '\" no existe en el catálogo de Territorios SAP.');\nconst zonaNorte = ZONA_NORTE.has(norm(suc.descripcion));\n\n// ---------- 4. tope de descuento, desde parámetros (puede ser más estricto) ----------\nconst topeDescParam = Number(P.descuento_max_pct);\nconst topeDesc = isFinite(topeDescParam) ? Math.min(topeDescParam, DESCUENTO_MAX) : DESCUENTO_MAX;\nconst excedidas = lineasParseadas.filter(l => l.descP > topeDesc);\nif (excedidas.length) {\n  return stop('El descuento supera el tope autorizado de ' + topeDesc +\n              '% en el/los equipo(s): ' + excedidas.map(l => l.itemCode).join(', ') + '.');\n}\n\n// ---------- 5. UF: sin fallback inventado ----------\nlet ufRate = null;\nif (ufRes && ufRes.data !== undefined && ufRes.data !== null) ufRate = Number(ufRes.data);\nelse if (ufRes && ufRes.value !== undefined && ufRes.value !== null) ufRate = Number(ufRes.value);\nelse if (ufRes && ufRes.Rate !== undefined) ufRate = Number(ufRes.Rate);\n\nconst necesitaUf = lineasParseadas.some(l => l.incSeguro);\nif (necesitaUf && !(ufRate > 0)) {\n  return stop('No se pudo obtener la tasa de la UF desde SAP. ' +\n              'El seguro se calcula en UF, así que la cotización no se emite. ' +\n              'Detalle: ' + sapError(ufRes, 'respuesta vacía de GetCurrencyRate') + '.');\n}\n\n// ---------- 5b. Datos de facturación del cliente (desde SAP, no del formulario) ----------\nconst fact = await getDatosFacturacion(this, cardCode, sapCookie);\n\n// Vigencia de la cotización: hoy + días de validez configurados en parámetros.\nconst vence = new Date(Date.now() + (Number(P.dias_validez_oferta) || 30) * 86400000)\n  .toISOString().slice(0, 10);\n\n// ---------- 6. resolver precio real (Items/ItemPrices de SAP) y calcular ----------\nconst round = (n) => Math.round(n);\nconst horMinDefault = Number(P.horas_min_default) || 180;\n\nconst equipoLines = [];\nconst adicionales = [];\nconst detalleLineas = []; // para trazabilidad / registro en Sheets\n\nlet netoTotal = 0;\n\nfor (let i = 0; i < lineasParseadas.length; i++) {\n  const l = lineasParseadas[i];\n  const n = i + 1; // 1-based: es el U_LineaAsoc que espera VID_RTCOTADCollection\n\n  const eqs = (cat.equipos || []).filter(x =>\n    String(x.item_code || '').toUpperCase().trim() === l.itemCode.toUpperCase());\n  if (!eqs.length) return stop('El equipo ' + l.itemCode + ' no está en la hoja \"equipos\" del catálogo.');\n  const eq = eqs[0];\n  const horMin = Number(eq.horas_min) || horMinDefault;\n\n  const plEquipo = priceListEquipo(l.durQty, zonaNorte);\n  if (!plEquipo) return stop('línea ' + n + ': no existe lista de precio para ' + l.durQty + ' días.');\n  const precioBaseDiario = await getItemPrice(this, l.itemCode, plEquipo, sapCookie);\n  if (!(precioBaseDiario > 0)) {\n    return stop('El equipo ' + l.itemCode + ' no tiene precio cargado en SAP (Lista de precios ' + plEquipo + ').');\n  }\n\n  const valHr      = round(precioBaseDiario / (horMin / 30));\n  const tarBase    = precioBaseDiario * l.durQty;\n  const montoDesc  = round(tarBase * (l.descP / 100));\n  const netoEquipo = tarBase - montoDesc;\n\n  equipoLines.push({\n    U_ItemCode: l.itemCode, U_DurQty: l.durQty, U_HorMin: horMin,\n    U_ValHr: valHr, U_ValHrEx: valHr, U_TarBase: tarBase,\n    U_DescP: l.descP, U_Desc: montoDesc, U_Neto: netoEquipo,\n    U_Dest: destLugar, U_DestAddr: destLugar,\n  });\n\n  let netoAdicLinea = 0;\n  let seguroClp = 0, alistaClp = 0;\n\n  if (l.incSeguro) {\n    const plSeguro = priceListSeguro(l.durQty);\n    const precioUf = plSeguro ? await getItemPrice(this, 'SEG-' + l.itemCode, plSeguro, sapCookie) : 0;\n    seguroClp = round(precioUf * ufRate * l.durQty);\n    netoAdicLinea += seguroClp;\n    adicionales.push({ U_ItemCode: 'SEG-' + l.itemCode, U_LineaAsoc: n, U_Precio: seguroClp,\n                       U_DescP: 0, U_Desc: 0, U_Neto: seguroClp, U_Dim2: 'SEGUROAR' });\n  }\n  if (l.incAlistamiento) {\n    alistaClp = round(await getItemPrice(this, 'zALI-' + l.itemCode, '1', sapCookie));\n    netoAdicLinea += alistaClp;\n    adicionales.push({ U_ItemCode: 'zALI-' + l.itemCode, U_LineaAsoc: n, U_Precio: alistaClp,\n                       U_DescP: 0, U_Desc: 0, U_Neto: alistaClp, U_Dim2: 'ALISTAAR' });\n  }\n\n  netoTotal += netoEquipo + netoAdicLinea;\n\n  detalleLineas.push({\n    itemCode: l.itemCode, itemNombre: eq.nombre || l.itemCode, categoria: eq.categoria || '',\n    dias: l.durQty, descuentoPct: l.descP, descuentoMonto: montoDesc,\n    precioBaseDiario, seguroClp, alistamientoClp: alistaClp, neto: netoEquipo + netoAdicLinea,\n  });\n}\n\nconst ivaPct    = Number(P.iva_pct);\nconst impuesto  = round(netoTotal * (isFinite(ivaPct) ? ivaPct : 0.19));\nconst totalDoc  = netoTotal + impuesto;\nconst hoy       = new Date().toISOString().slice(0, 10);\n\n// ---------- 7. oportunidad ----------\nconst createOpp = !opprIdIn;\nconst opportunityPayload = createOpp ? {\n  CardCode: cardCode,\n  SalesPerson: slpCode,\n  StartDate: hoy,\n  MaxLocalTotal: totalDoc,\n  Remarks: 'Arriendo ' + cardCode + ' - ' + detalleLineas.map(d => d.itemCode).join('+') + '. Creada automáticamente desde el cotizador web.',\n  Status: 'sos_Open',\n  OpportunityType: 'boOpSales',\n  U_TipoNegocio: 'ARRIENDO',\n  SalesOpportunitiesLines: [{\n    SalesPerson: slpCode, StartDate: hoy, StageKey: 2,\n    PercentageRate: 20, MaxLocalTotal: totalDoc, Status: 'so_Open',\n  }],\n} : null;\n\nconst quotePayload = {\n  U_CardCode: cardCode,\n  U_CardName: fact.cardName,\n  U_Contacto: '',\n  U_RefDate: hoy, U_DocDate: hoy, U_DueDate: vence,\n  U_Vendedor: String(slpCode),\n  U_OpprId: opprIdIn ? parseInt(opprIdIn, 10) : null,\n  U_Estado: 'A',\n  U_PerFact: P.periodo_facturacion_default || 'D',\n  U_DiaFact: '',\n  U_Moneda: P.moneda || 'CLP',\n  U_DescP: 0, U_Desc: 0,\n  U_Neto: netoTotal, U_Impuesto: impuesto,\n  U_Total: totalDoc, U_TotalPQ: totalDoc,\n  U_Sucursal: suc.descripcion,\n  U_Dest: destLugar,\n  U_DestAddr: destLugar,\n  U_DestFact: fact.destFact,\n  U_DestFAddr: fact.destFAddr,\n  U_CondPago: fact.condPago,\n  U_Rut: fact.rut,\n  U_APROB_COM: 'NO',\n  U_APROB_FIN: 'NO',\n  U_APROB_LOG: 'NO',\n  U_TipoContrato: P.tipo_contrato_default || 'STD',\n  U_Comment: 'Creada automáticamente desde el cotizador web',\n  VID_RTCOTDCollection: equipoLines,\n  VID_RTCOTADCollection: adicionales,\n};\n\nreturn [{ json: {\n  success: true, createOpp, opportunityPayload, quotePayload,\n  _calculo: {\n    zonaNorte, sucursal: suc.descripcion, slpCode, ufRate,\n    netoTotal, impuesto, totalDoc,\n    destino: { lugar: destLugar },\n    lineas: detalleLineas,\n    vendedorEmail, vendedorNombre: vend.nombre || '',\n    cardCode,\n  },\n} }];"
+      },
+      "id": "4a57cba2-664c-43a5-ae09-ad6238e4628a",
+      "name": "01 · Validar y calcular",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12368,
+        3696
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a812b1cc-d23d-4eb5-8912-bd49e357a459",
+      "name": "01 · ¿Pasó validación?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12624,
+        3696
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.createOpp }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0622dd74-a481-4232-9336-ceb703d7633c",
+      "name": "01 · ¿Crear oportunidad?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12896,
+        3552
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/SalesOpportunities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('01 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.opportunityPayload) }}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "bea9ff8b-6b39-434a-978b-e57dd59525f5",
+      "name": "01 · POST SalesOpportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13104,
+        3424
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst oppRes = $input.first().json;\nconst prev = $('01 · ¿Crear oportunidad?').first().json;\n\nconst newId = oppRes && (oppRes.SequentialNo || oppRes.OpprId || oppRes.AbsoluteEntry);\nif (!newId) {\n  const det = (oppRes && oppRes.error && oppRes.error.message)\n    ? (oppRes.error.message.value || oppRes.error.message)\n    : 'respuesta inesperada del Service Layer';\n  return [{ json: { success: false, _control: { continue: false,\n    message: 'No se pudo crear la oportunidad en SAP: ' + det } } }];\n}\nconst q = { ...prev.quotePayload, U_OpprId: parseInt(newId, 10) };\nreturn [{ json: { ...prev, quotePayload: q, createdOpprId: newId } }];\n"
+      },
+      "id": "83b5fc11-500f-46f2-a7fe-f11d17a9692a",
+      "name": "01 · Asignar OpprId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13296,
+        3424
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/VID_RTCOT",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('01 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.quotePayload) }}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "e80f93d5-d77a-4d14-a0fb-725b4480f86d",
+      "name": "01 · POST VID_RTCOT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13664,
+        3568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res  = $input.first().json;\nconst prev = $('01 · ¿Crear oportunidad?').first().json || {};\n\nif (res && res.DocEntry) {\n  return [{ json: { success: true, data: {\n    docEntry: res.DocEntry, docNum: res.DocNum,\n    opprId: prev.createdOpprId || (prev.quotePayload || {}).U_OpprId || null,\n    total: (prev._calculo || {}).totalDoc,\n  } } }];\n}\nreturn [{ json: { success: false,\n  message: sapError(res, 'SAP rechazó la cotización sin devolver un motivo.') } }];\n"
+      },
+      "id": "2809623c-bcff-4d04-8c91-71675ba5c009",
+      "name": "01 · Validar respuesta SAP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13936,
+        3568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma UNA fila con las columnas de la hoja 'Cotizaciones'.\n// Se registra tanto el éxito como el rechazo: así queda la traza de intentos.\nconst r = $input.first().json;\nconst c = ($('01 · Validar y calcular').first().json || {})._calculo || {};\nconst d = r.data || {};\nconst lineas = c.lineas || [];\n\nconst f2 = (n) => (n === undefined || n === null || n === '') ? '' : n;\nconst join = (arr) => arr.join(' + ');\n\nreturn [{ json: {\n  fecha_hora:       new Date().toISOString().replace('T', ' ').slice(0, 19),\n  doc_num:          f2(d.docNum),\n  doc_entry:        f2(d.docEntry),\n  oppr_id:          f2(d.opprId),\n  card_code:        f2(c.cardCode),\n  card_name:        f2($('01 · Webhook').first().json.body.cardName),\n  item_code:        join(lineas.map(l => l.itemCode)),\n  item_nombre:      join(lineas.map(l => l.itemNombre)),\n  categoria:        join([...new Set(lineas.map(l => l.categoria))]),\n  dias:             join(lineas.map(l => l.dias)),\n  zona:             f2(c.zona),\n  sucursal:         f2(c.sucursal),\n  destino:          f2((c.destino || {}).completo),\n  descuento_pct:    join(lineas.map(l => l.descuentoPct)),\n  descuento_monto:  lineas.reduce((s, l) => s + (l.descuentoMonto || 0), 0),\n  seguro_clp:       lineas.reduce((s, l) => s + (l.seguroClp || 0), 0),\n  alistamiento_clp: lineas.reduce((s, l) => s + (l.alistamientoClp || 0), 0),\n  neto:             f2(c.netoTotal),\n  iva:              f2(c.impuesto),\n  total:            f2(c.totalDoc),\n  uf_usada:         f2(c.ufRate),\n  vendedor_email:   f2(c.vendedorEmail),\n  vendedor_nombre:  f2(c.vendedorNombre),\n  slp_code:         f2(c.slpCode),\n  estado:           r.success ? 'EMITIDA' : 'ERROR',\n  origen:           'CRM web',\n} }];"
+      },
+      "id": "f66250fb-09a2-459e-8b69-8511d0b96edd",
+      "name": "01 · Armar fila registro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14192,
+        3568
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JwP6RQvQfwbeZD9SiOcn6caksYIiJ2CDkVEITMY4VWI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Cotizaciones",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "value": {},
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "d0c1df1f-e774-438c-8427-961b119ebd2a",
+      "name": "01 · Registrar en Datos CRM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        14432,
+        3568
+      ],
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "db6AJXz0XaLViyUQ",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Append en el libro Datos CRM, hoja 'Cotizaciones'. El mapeo es automático por nombre de columna, así que la fila 1 de esa hoja debe tener exactamente los encabezados de la hoja 'cotizaciones_ENCABEZADOS' del archivo catalogos-alo.xlsx.\nSi Sheets falla, la cotización YA está creada en SAP: el workflow no se cae, responde igual y marca registradoEnPlanilla=false."
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// El nodo de Sheets devuelve su propia salida; aquí se recupera la respuesta\n// que espera el front, y se deja constancia de si el registro quedó grabado.\nconst r = $('01 · Validar respuesta SAP').first().json;\nlet registrado = true;\ntry {\n  const g = $('01 · Registrar en Datos CRM').first().json;\n  if (g && (g.error || g.__error)) registrado = false;\n} catch (e) { registrado = false; }\n\nif (r.success) {\n  return [{ json: { ...r, data: { ...(r.data || {}), registradoEnPlanilla: registrado } } }];\n}\nreturn [{ json: r }];\n"
+      },
+      "id": "de1c9ce2-8cb3-4883-b4ee-e1bf920f375b",
+      "name": "01 · Preparar respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14704,
+        3568
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('01 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "0b773ad6-1eab-415b-935d-42ce5a130f9d",
+      "name": "01 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        14976,
+        3712
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "d8d499c1-c572-43bd-b1af-acc22936d06c",
+      "name": "01 · Responder",
+      "position": [
+        15232,
+        3712
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes/buscar",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "1862da47-5ab7-4303-ad96-7e8da1ef4ee3",
+      "name": "02 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        4272
+      ],
+      "notesInFlow": true,
+      "webhookId": "f3d2836a-e865-41e6-a3fe-981e945cd841",
+      "notes": "BLOQUE 02 — 02 · Buscar clientes\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst b = $('02 · Webhook').first().json.body || {};\n\nconst rut  = String(b.rut || '').replace(/[^0-9kK]/gi, '').toUpperCase();\nconst nom  = String(b.cardName || b.nombre || '').trim();\nconst cc   = String(b.cardCode || '').trim();\n\nif (!rut && !nom && !cc) {\n  return [{ json: { success: false, message: 'Indica un RUT, un CardCode o un nombre para buscar.' } }];\n}\n\n// Escapa la comilla simple, que en OData se duplica.\nconst q = (s) => String(s).replace(/'/g, \"''\");\nconst conds = [];\nif (cc)  conds.push(\"CardCode eq '\" + q(cc) + \"'\");\nif (rut) conds.push(\"contains(LicTradNum,'\" + q(rut) + \"')\");\nif (nom) conds.push(\"contains(toupper(CardName),'\" + q(nom.toUpperCase()) + \"')\");\n\nconst filter = \"(\" + conds.join(' or ') + \") and CardType eq 'cCustomer'\";\nconst select = 'CardCode,CardName,LicTradNum,Frozen,GroupNum,PayTermsGrpCode,Phone1,EmailAddress,City,Address';\n\nreturn [{ json: { success: true,\n  query: 'BusinessPartners?$select=' + select +\n         '&$filter=' + encodeURIComponent(filter) + '&$top=50' } }];\n\n"
+      },
+      "id": "688e04c8-f030-403b-aba2-ce15b8d73eca",
+      "name": "02 · Armar consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        4272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c87349f5-2fd1-4856-8213-f3ea543b563d",
+      "name": "02 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12112,
+        4272
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://sap.alo-group.com:50000/b1s/v1/' + $('02 · Armar consulta').first().json.query }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('02 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "5f089b0d-852b-4cd8-9eef-34e7c7342dda",
+      "name": "02 · Consultar BusinessPartners",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        4272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (!res || res.error) {\n  return [{ json: { success: false,\n    message: sapError(res, 'SAP no devolvió resultados para esta consulta.') } }];\n}\nconst rows = Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : []);\n\nconst list = rows.map(r => ({\n  CardCode: r.CardCode,\n  CardName: r.CardName,\n  LicTradNum: r.LicTradNum,\n  PayTermsGrpName: r.PayTermsGrpCode != null ? String(r.PayTermsGrpCode) : '',\n  U_EstadoTrib: r.Frozen === 'tYES' ? 'BLOQUEADO' : 'VIGENTE',\n  Phone1: r.Phone1, EmailAddress: r.EmailAddress,\n  City: r.City, Address: r.Address,\n}));\nreturn [{ json: { success: true, clientes: list,\n  message: list.length ? undefined : 'Sin resultados para esa búsqueda.' } }];\n\n"
+      },
+      "id": "1d9c4b28-f746-40ce-a8a3-07584c84acdb",
+      "name": "02 · Formatear salida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12624,
+        4272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('02 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "24cda25f-4960-4de4-a3d6-c33f2bc830ca",
+      "name": "02 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12896,
+        4272
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "17ba6d63-faa4-4f69-a014-26046bf05638",
+      "name": "02 · Responder",
+      "position": [
+        13152,
+        4272
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oportunidades/listar",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "88bf8c70-d717-4e79-a8d2-3dafc22cf8ff",
+      "name": "03 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        4896
+      ],
+      "notesInFlow": true,
+      "webhookId": "702fbb3e-90cb-4f16-8a40-bb8e5fd00b31",
+      "notes": "BLOQUE 03 — 03 · Listar oportunidades\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst b = $('03 · Webhook').first().json.body || {};\n\nconst texto  = String(b.texto || '').trim();\nconst estado = String(b.estado || '').trim();   // O | W | L\nconst etapa  = String(b.etapa || '').trim();\nconst q = (s) => String(s).replace(/'/g, \"''\");\n\nconst conds = [];\nif (estado) {\n  const m = { O: 'sos_Open', W: 'sos_Won', L: 'sos_Lost' };\n  if (m[estado]) conds.push(\"Status eq '\" + m[estado] + \"'\");\n}\nif (etapa) conds.push('SalesStage eq ' + parseInt(etapa, 10));\nif (texto) {\n  const t = q(texto.toUpperCase());\n  conds.push(\"(contains(toupper(CardName),'\" + t + \"') or contains(toupper(Remarks),'\" + t + \"'))\");\n}\nconst select = 'OpprId,CardCode,CardName,Name,Remarks,SalesPerson,SalesStage,MaxLocalTotal,PredictedClosingDate,Status,StartDate';\nlet qs = 'SalesOpportunities?$select=' + select + '&$orderby=OpprId desc&$top=100';\nif (conds.length) qs += '&$filter=' + encodeURIComponent(conds.join(' and '));\nreturn [{ json: { success: true, query: qs } }];\n\n"
+      },
+      "id": "7a923725-c1e1-42f1-ad33-8de1b54e5376",
+      "name": "03 · Armar consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        4896
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c9586c56-7855-4405-bfdb-3dab1a29979e",
+      "name": "03 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12112,
+        4896
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://sap.alo-group.com:50000/b1s/v1/' + $('03 · Armar consulta').first().json.query }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('03 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "7052079b-9b5e-4232-85da-d82e353ea96c",
+      "name": "03 · Consultar SalesOpportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        4896
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (!res || res.error) {\n  return [{ json: { success: false,\n    message: sapError(res, 'SAP no devolvió resultados para esta consulta.') } }];\n}\nconst rows = Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : []);\n\nconst est = { sos_Open: 'O', sos_Won: 'W', sos_Lost: 'L' };\nconst list = rows.map(r => ({\n  OpprId: r.OpprId, CardCode: r.CardCode, CardName: r.CardName,\n  Remarks: r.Remarks || r.Name || '',\n  SalesPerson: r.SalesPerson,\n  SalesStage: r.SalesStage != null ? String(r.SalesStage) : '1',\n  MaxSumLoc: r.MaxLocalTotal || 0,\n  PredDate: r.PredictedClosingDate || null,\n  Status: est[r.Status] || 'O',\n}));\nreturn [{ json: { success: true, oportunidades: list,\n  message: list.length ? undefined : 'No hay oportunidades que coincidan con el filtro.' } }];\n\n"
+      },
+      "id": "ceac0ee5-667e-46a3-8ad4-a6d7a1c21bf4",
+      "name": "03 · Formatear salida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12624,
+        4896
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('03 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "7704553b-24e7-4b04-9db5-2b8fb3e20235",
+      "name": "03 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12896,
+        4896
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "39c8f01e-e772-426a-a531-ec768be2acdc",
+      "name": "03 · Responder",
+      "position": [
+        13152,
+        4896
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oportunidades/crear",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "02203634-2dee-4b6e-b4d6-632b4567d7ae",
+      "name": "04 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        5504
+      ],
+      "notesInFlow": true,
+      "webhookId": "f332a02a-bebe-45a1-9e55-beab5c379274",
+      "notes": "BLOQUE 04 — 04 · Crear oportunidad\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Trae los catálogos desde /webhook/catalogos (Google Sheets). */\nasync function getCatalogos() {\n  const r = await this.helpers.httpRequest({\n    method: 'GET', url: 'https://alogroup.app.n8n.cloud/webhook/catalogos', json: true,\n  });\n  if (!r || !r.data) throw new Error('El webhook /catalogos no devolvió datos.');\n  return r.data;\n}\n\nconst b = $('04 · Webhook').first().json.body || {};\nconst cat = await getCatalogos.call(this);\nconst P = cat.parametrosMap || {};\nconst stop = (m) => [{ json: { success: false, _control: { continue: false, message: m } } }];\n\n/** email del vendedor -> SlpCode de SAP. Sin esto no se emite el documento. */\nfunction slp(email) {\n  const v = (cat.vendedores || []).find(x =>\n    String(x.email || '').toLowerCase().trim() === String(email || '').toLowerCase().trim());\n  return v && v.sales_person_code ? parseInt(v.sales_person_code, 10) : null;\n}\n/** Mensaje preciso según por qué no se pudo resolver el vendedor. */\nfunction errVendedor(email) {\n  const v = (cat.vendedores || []).find(x =>\n    String(x.email || '').toLowerCase().trim() === String(email || '').toLowerCase().trim());\n  if (!v) return 'El correo ' + email + ' no aparece en la columna CORREO de ' +\n                 'USUARIOS-DATOMAESTRO (libro USUARIOS-ALO).';\n  return 'El vendedor ' + email + ' no tiene un código numérico en la columna ' +\n         'EMPLEADO_VENTAS de USUARIOS-DATOMAESTRO.';\n}\n\nconst cardCode = String(b.cardCode || '').trim();\nconst nombre   = String(b.nombre || '').trim();\nconst email    = b.vendedorEmail || b.userEmail;\n\nif (!cardCode) return stop('Falta el código de cliente.');\nif (!nombre)   return stop('Falta el nombre de la oportunidad.');\n\nconst code = slp(email);\nif (!code) return stop(errVendedor(email));\n\nconst etapa = parseInt(b.salesStage || 1, 10);\nconst pctPorEtapa = { 1: 5, 3: 20, 4: 50, 5: 90 };\nconst potencial = Math.round(Number(b.potencial) || 0);\nconst hoy = new Date().toISOString().slice(0, 10);\n\n// La fecha llega en ISO desde el front (app.js ya la convierte).\nlet cierre = b.fechaCierre || null;\nif (cierre && !/^\\d{4}-\\d{2}-\\d{2}$/.test(cierre)) cierre = null;\n\nconst payload = {\n  CardCode: cardCode,\n  SalesPerson: code,\n  StartDate: hoy,\n  PredictedClosingDate: cierre,\n  MaxLocalTotal: potencial,\n  SalesStage: etapa,\n  Status: 'sos_Open',\n  OpportunityType: 'boOpSales',\n  Remarks: (nombre + (b.comentarios ? ' — ' + String(b.comentarios) : '')).slice(0, 250),\n  U_TipoNegocio: 'ARRIENDO',\n  SalesOpportunitiesLines: [{\n    SalesPerson: code, StartDate: hoy, StageKey: etapa,\n    PercentageRate: pctPorEtapa[etapa] || 5,\n    MaxLocalTotal: potencial, Status: 'so_Open',\n  }],\n};\nreturn [{ json: { success: true, payload } }];\n\n"
+      },
+      "id": "ddd67654-3f4f-4e8e-9d57-3f21631be338",
+      "name": "04 · Armar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cc3b576c-7545-452c-a929-82a974a9e5dd",
+      "name": "04 · ¿Payload válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12112,
+        5504
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "2d42e78a-f1c0-4185-9928-ab6fa590c2a4",
+      "name": "04 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        5392
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/SalesOpportunities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('04 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('04 · Armar payload').first().json.payload) }}",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "924b0bd9-9e55-4b93-97c1-3fc35c63e8b3",
+      "name": "04 · POST SalesOpportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12640,
+        5392
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nconst id = res && (res.OpprId || res.SequentialNo || res.AbsoluteEntry);\nif (id) return [{ json: { success: true, data: { opprId: id } } }];\nreturn [{ json: { success: false,\n  message: sapError(res, 'SAP rechazó la oportunidad sin devolver un motivo.') } }];\n"
+      },
+      "id": "b2189777-05a7-4f64-baf7-0f66a188e225",
+      "name": "04 · Validar respuesta SAP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12896,
+        5392
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('04 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "98112a34-8512-4dd1-bb14-17a6bf4152a2",
+      "name": "04 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13152,
+        5392
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "98ee5dc9-f38f-46dc-b2bb-29013de542e3",
+      "name": "04 · Responder",
+      "position": [
+        13408,
+        5504
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ofertas/listar",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "993dd5b3-0cd1-4450-93c0-107407bdf721",
+      "name": "05 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        6128
+      ],
+      "notesInFlow": true,
+      "webhookId": "e3709c29-d927-4aeb-9f8e-e4dcbee6a01f",
+      "notes": "BLOQUE 05 — 05 · Listar ofertas\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst b = $('05 · Webhook').first().json.body || {};\n\nconst texto  = String(b.texto || '').trim();\nconst estado = String(b.estado || '').trim();   // O | C\nconst q = (s) => String(s).replace(/'/g, \"''\");\n\nconst conds = [];\nif (estado === 'O') conds.push(\"DocumentStatus eq 'bost_Open'\");\nif (estado === 'C') conds.push(\"DocumentStatus eq 'bost_Close'\");\nif (texto) {\n  const t = q(texto.toUpperCase());\n  const n = parseInt(texto, 10);\n  const or = [\"contains(toupper(CardName),'\" + t + \"')\",\n              \"contains(toupper(NumAtCard),'\" + t + \"')\"];\n  if (!isNaN(n)) or.push('DocNum eq ' + n);\n  conds.push('(' + or.join(' or ') + ')');\n}\nconst select = 'DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocumentStatus,SalesPersonCode,NumAtCard';\nlet qs = 'Quotations?$select=' + select + '&$orderby=DocEntry desc&$top=100';\nif (conds.length) qs += '&$filter=' + encodeURIComponent(conds.join(' and '));\nreturn [{ json: { success: true, query: qs } }];\n\n"
+      },
+      "id": "9ae55ac5-7b96-418b-9801-ab1326c817cc",
+      "name": "05 · Armar consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        6128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "ec3a63b4-0064-42c1-a3c6-4fb3657a4f6a",
+      "name": "05 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12112,
+        6128
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://sap.alo-group.com:50000/b1s/v1/' + $('05 · Armar consulta').first().json.query }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('05 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "49bae203-0512-47f4-aa0c-26bb9997b9dd",
+      "name": "05 · Consultar Quotations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        6128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (!res || res.error) {\n  return [{ json: { success: false,\n    message: sapError(res, 'SAP no devolvió resultados para esta consulta.') } }];\n}\nconst rows = Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : []);\n\nconst list = rows.map(r => ({\n  DocEntry: r.DocEntry, DocNum: r.DocNum,\n  CardCode: r.CardCode, CardName: r.CardName,\n  DocDate: r.DocDate, DocDueDate: r.DocDueDate,\n  DocTotal: r.DocTotal || 0,\n  SalesPerson: r.SalesPersonCode,\n  DocStatus: r.DocumentStatus === 'bost_Close' ? 'C' : 'O',\n}));\nreturn [{ json: { success: true, ofertas: list,\n  message: list.length ? undefined : 'No hay ofertas que coincidan con el filtro.' } }];\n\n"
+      },
+      "id": "bf8e1870-7359-4d39-ab25-e8c4b353020e",
+      "name": "05 · Formatear salida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12624,
+        6128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('05 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "b9474afb-6bb3-476c-87c0-a41bf56cbaf3",
+      "name": "05 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12896,
+        6128
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "39ceec3e-838f-41e4-b3c9-76f0c4d75a9f",
+      "name": "05 · Responder",
+      "position": [
+        13152,
+        6128
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ofertas/crear",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "d46c9c61-4545-47f9-9d1f-b1869a98294f",
+      "name": "06 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        6752
+      ],
+      "notesInFlow": true,
+      "webhookId": "d64c865c-ce6e-48f5-a32e-7e0d970a2f90",
+      "notes": "BLOQUE 06 — 06 · Crear oferta de venta\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Trae los catálogos desde /webhook/catalogos (Google Sheets). */\nasync function getCatalogos() {\n  const r = await this.helpers.httpRequest({\n    method: 'GET', url: 'https://alogroup.app.n8n.cloud/webhook/catalogos', json: true,\n  });\n  if (!r || !r.data) throw new Error('El webhook /catalogos no devolvió datos.');\n  return r.data;\n}\n\nconst b = $('06 · Webhook').first().json.body || {};\nconst cat = await getCatalogos.call(this);\nconst P = cat.parametrosMap || {};\nconst stop = (m) => [{ json: { success: false, _control: { continue: false, message: m } } }];\n\n/** email del vendedor -> SlpCode de SAP. Sin esto no se emite el documento. */\nfunction slp(email) {\n  const v = (cat.vendedores || []).find(x =>\n    String(x.email || '').toLowerCase().trim() === String(email || '').toLowerCase().trim());\n  return v && v.sales_person_code ? parseInt(v.sales_person_code, 10) : null;\n}\n/** Mensaje preciso según por qué no se pudo resolver el vendedor. */\nfunction errVendedor(email) {\n  const v = (cat.vendedores || []).find(x =>\n    String(x.email || '').toLowerCase().trim() === String(email || '').toLowerCase().trim());\n  if (!v) return 'El correo ' + email + ' no aparece en la columna CORREO de ' +\n                 'USUARIOS-DATOMAESTRO (libro USUARIOS-ALO).';\n  return 'El vendedor ' + email + ' no tiene un código numérico en la columna ' +\n         'EMPLEADO_VENTAS de USUARIOS-DATOMAESTRO.';\n}\n\nconst cardCode = String(b.cardCode || '').trim();\nconst lineas   = Array.isArray(b.lineas) ? b.lineas : [];\nconst email    = b.vendedorEmail || b.userEmail;\n\nif (!cardCode)      return stop('Falta el código de cliente.');\nif (!lineas.length) return stop('La oferta no tiene líneas de artículo.');\n\nconst code = slp(email);\nif (!code) return stop(errVendedor(email));\n\n// Validar cada línea antes de mandarla a SAP.\nconst docLines = [];\nfor (let i = 0; i < lineas.length; i++) {\n  const l = lineas[i] || {};\n  const item = String(l.itemCode || '').trim();\n  const qty  = Number(l.quantity);\n  const prc  = Number(l.unitPrice);\n  if (!item)      return stop('La línea ' + (i + 1) + ' no tiene código de artículo.');\n  if (!(qty > 0)) return stop('La línea ' + (i + 1) + ' (' + item + ') tiene cantidad inválida.');\n  if (!(prc >= 0)) return stop('La línea ' + (i + 1) + ' (' + item + ') tiene precio inválido.');\n  docLines.push({ ItemCode: item, Quantity: qty, UnitPrice: prc });\n}\n\nconst hoy = new Date().toISOString().slice(0, 10);\nlet vence = b.docDueDate;\nif (!vence || !/^\\d{4}-\\d{2}-\\d{2}$/.test(vence)) {\n  const dias = Number(P.dias_validez_oferta) || 30;\n  const d = new Date(); d.setDate(d.getDate() + dias);\n  vence = d.toISOString().slice(0, 10);\n}\n\nconst payload = {\n  CardCode: cardCode,\n  DocDate: /^\\d{4}-\\d{2}-\\d{2}$/.test(b.docDate || '') ? b.docDate : hoy,\n  DocDueDate: vence,\n  SalesPersonCode: code,\n  NumAtCard: String(b.referencia || '').slice(0, 100),\n  Comments: 'Creada desde el CRM web',\n  DocumentLines: docLines,\n};\n// Si viene de una oportunidad, se deja el vínculo.\nif (b.opprId) payload.OpportunityId = parseInt(b.opprId, 10);\n\nreturn [{ json: { success: true, payload } }];\n\n"
+      },
+      "id": "1449b01f-eb7b-4018-aa2a-338259381f53",
+      "name": "06 · Armar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        6752
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f7697b6e-b1ac-4489-ab2a-a63b9532dcec",
+      "name": "06 · ¿Payload válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12112,
+        6848
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "46dc2855-9299-45a2-b75a-6de1a5bda0bb",
+      "name": "06 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        6752
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Quotations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('06 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('06 · Armar payload').first().json.payload) }}",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "f0b3a625-06e3-49f6-b070-42c5a8ad14ef",
+      "name": "06 · POST Quotations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12624,
+        6752
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (res && res.DocEntry) {\n  return [{ json: { success: true, data: {\n    docEntry: res.DocEntry, docNum: res.DocNum, total: res.DocTotal } } }];\n}\nreturn [{ json: { success: false,\n  message: sapError(res, 'SAP rechazó la oferta sin devolver un motivo.') } }];\n"
+      },
+      "id": "dfe8d2af-67fa-4821-bd66-5bdf83be2bae",
+      "name": "06 · Validar respuesta SAP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12896,
+        6752
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('06 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "7869901e-27be-4a6f-b940-66ceaeabcd80",
+      "name": "06 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13152,
+        6752
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "94e2da6f-a220-4afe-8ad6-129ae0e414db",
+      "name": "06 · Responder",
+      "position": [
+        13408,
+        6880
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cotizaciones/obtener",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "63d0970f-c6c0-4af4-853c-b8384c1109f8",
+      "name": "07 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        7376
+      ],
+      "notesInFlow": true,
+      "webhookId": "267b39cc-dae0-4cb8-ad7f-92933805e57d",
+      "notes": "BLOQUE 07 — 07 · Obtener cotización\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst b = $('07 · Webhook').first().json.body || {};\n\nconst doc = String(b.docNum || b.docEntry || '').trim();\nif (!doc) return [{ json: { success: false, message: 'Indica el N° de cotización.' } }];\nconst n = parseInt(doc, 10);\nif (isNaN(n)) return [{ json: { success: false, message: 'El N° de cotización debe ser numérico.' } }];\n\n// Se busca por DocNum, que es el número que ve el usuario.\nconst select = 'DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,Address,PayToCode,PaymentGroupCode,SalesPersonCode,Comments,NumAtCard';\nreturn [{ json: { success: true,\n  query: 'Quotations?$select=' + select +\n         '&$filter=' + encodeURIComponent('DocNum eq ' + n) + '&$top=1' } }];\n\n"
+      },
+      "id": "52d3f88d-3d8d-459b-8d80-64e6dd1c27cc",
+      "name": "07 · Armar consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        7376
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "5152cb25-999c-45b7-836c-7a69367de791",
+      "name": "07 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12112,
+        7376
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://sap.alo-group.com:50000/b1s/v1/' + $('07 · Armar consulta').first().json.query }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('07 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "f1e37232-92ec-4fa2-993d-9f8a74d1b1d2",
+      "name": "07 · Consultar Quotations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        7376
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (!res || res.error) {\n  return [{ json: { success: false,\n    message: sapError(res, 'SAP no devolvió resultados para esta consulta.') } }];\n}\nconst rows = Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : []);\n\nif (!rows.length) {\n  return [{ json: { success: false,\n    message: 'No se encontró la cotización N° ' +\n             ($('07 · Webhook').first().json.body.docNum || '') + ' en SAP.' } }];\n}\nconst r = rows[0];\nreturn [{ json: { success: true, data: {\n  DocEntry: r.DocEntry, DocNum: r.DocNum,\n  CardCode: r.CardCode, CardName: r.CardName,\n  LicTradNum: (r.CardCode || '').replace(/^C/, ''),\n  PayTermsGrpName: r.PaymentGroupCode != null ? String(r.PaymentGroupCode) : '',\n  PayToCode: r.PayToCode || '',\n  Address: r.Address || '',\n  SalesPerson: r.SalesPersonCode,\n  DocTotal: r.DocTotal,\n  Comments: r.Comments || '',\n} } }];\n\n"
+      },
+      "id": "ca3356eb-e64a-41f8-bd0d-82beca653417",
+      "name": "07 · Formatear salida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12624,
+        7376
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('07 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "0268e2bc-6042-4ec4-ade5-8f59fdd8aef7",
+      "name": "07 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12896,
+        7376
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "45d12e96-371e-4754-9772-d8e69bd8b811",
+      "name": "07 · Responder",
+      "position": [
+        13152,
+        7376
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contratos/crear",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "6ec7360b-6f93-4299-9aec-73e712bf8a85",
+      "name": "08 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        7984
+      ],
+      "notesInFlow": true,
+      "webhookId": "08337a38-2d24-4a5a-9885-4c210e7fd21c",
+      "notes": "BLOQUE 08 — 08 · Crear contrato de arriendo\n"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Trae los catálogos desde /webhook/catalogos (Google Sheets). */\nasync function getCatalogos() {\n  const r = await this.helpers.httpRequest({\n    method: 'GET', url: 'https://alogroup.app.n8n.cloud/webhook/catalogos', json: true,\n  });\n  if (!r || !r.data) throw new Error('El webhook /catalogos no devolvió datos.');\n  return r.data;\n}\n\nconst b = $('08 · Webhook').first().json.body || {};\nconst cat = await getCatalogos.call(this);\nconst P = cat.parametrosMap || {};\nconst stop = (m) => [{ json: { success: false, _control: { continue: false, message: m } } }];\n\n/** email del vendedor -> SlpCode de SAP. Sin esto no se emite el documento. */\nfunction slp(email) {\n  const v = (cat.vendedores || []).find(x =>\n    String(x.email || '').toLowerCase().trim() === String(email || '').toLowerCase().trim());\n  return v && v.sales_person_code ? parseInt(v.sales_person_code, 10) : null;\n}\n/** Mensaje preciso según por qué no se pudo resolver el vendedor. */\nfunction errVendedor(email) {\n  const v = (cat.vendedores || []).find(x =>\n    String(x.email || '').toLowerCase().trim() === String(email || '').toLowerCase().trim());\n  if (!v) return 'El correo ' + email + ' no aparece en la columna CORREO de ' +\n                 'USUARIOS-DATOMAESTRO (libro USUARIOS-ALO).';\n  return 'El vendedor ' + email + ' no tiene un código numérico en la columna ' +\n         'EMPLEADO_VENTAS de USUARIOS-DATOMAESTRO.';\n}\n\nconst doc   = String(b.docCotizacion || '').trim();\nconst email = b.vendedorEmail || b.userEmail;\nconst ini   = b.fechaInicio, fin = b.fechaTermino;\n\nif (!doc) return stop('Falta el N° de cotización de origen.');\nif (!ini || !/^\\d{4}-\\d{2}-\\d{2}$/.test(ini))\n  return stop('La fecha de inicio es obligatoria (formato AAAA-MM-DD).');\nif (fin && !/^\\d{4}-\\d{2}-\\d{2}$/.test(fin))\n  return stop('La fecha de término tiene un formato inválido.');\nif (fin && fin < ini)\n  return stop('La fecha de término no puede ser anterior a la de inicio.');\n\nconst code = slp(email);\nif (!code) return stop(errVendedor(email));\n\nconst sucCod = String(b.sucursal || '').toUpperCase().trim();\nconst suc = (cat.sucursales || []).find(s =>\n  String(s.codigo || '').toUpperCase().trim() === sucCod);\nif (sucCod && !suc) return stop('La sucursal \"' + sucCod + '\" no existe en el catálogo.');\n\nconst payload = {\n  U_CardCode: String(b.cardCode || '').trim(),\n  U_CotOrigen: doc,\n  U_DocDate: new Date().toISOString().slice(0, 10),\n  U_FechaIni: ini,\n  U_FechaFin: fin || null,\n  U_Vendedor: String(code),\n  U_Sucursal: sucCod,\n  U_Estado: 'A',\n  U_Moneda: P.moneda || 'CLP',\n  U_TipoContrato: P.tipo_contrato_default || 'STD',\n  U_DestFact: String(b.destFact || '').slice(0, 100),\n  U_DestAddr: String(b.destFAddr || '').slice(0, 200),\n  U_Comments: String(b.observaciones || '').slice(0, 250),\n};\nreturn [{ json: { success: true, payload } }];\n\n"
+      },
+      "id": "769cdf80-2cfa-4710-af36-6307e59d5618",
+      "name": "08 · Armar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11856,
+        7984
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0909dc0b-0d5f-4822-b56a-3fe54e473382",
+      "name": "08 · ¿Payload válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12192,
+        8160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "a3d881a1-315e-4af6-893b-9c1dcda5f1a7",
+      "name": "08 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        7984
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "Host: https://sap.alo-group.com:50000\nSi el Login falla con un error de certificado (UNABLE_TO_VERIFY_LEAF_SIGNATURE o SELF_SIGNED_CERT_IN_CHAIN), marca 'Ignore SSL Issues' en Options de este nodo.\n\nLas credenciales (UserName / Password / CompanyDB) viven en el credential Custom Auth 'SAP B1 Service Layer', con este valor:\n{\"body\":{\"UserName\":\"XXX\",\"Password\":\"XXX\",\"CompanyDB\":\"XXX\"}}\nNUNCA las escribas en este nodo."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/VID_RTOV",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('08 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('08 · Armar payload').first().json.payload) }}",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "87daa957-498e-42d0-b2dd-fdf99a71d78a",
+      "name": "08 · POST VID_RTOV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12624,
+        7984
+      ],
+      "notesInFlow": true,
+      "notes": "Verifica el nombre real de la UDO del contrato y de sus campos U_*. Aquí se asume VID_RTOV por simetría con VID_RTCOT; si en tu base se llama distinto, cámbialo en este nodo y en 'Armar payload'."
+    },
+    {
+      "parameters": {
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (res && res.DocEntry) {\n  return [{ json: { success: true, data: {\n    docEntry: res.DocEntry, docNum: res.DocNum } } }];\n}\nreturn [{ json: { success: false,\n  message: sapError(res, 'SAP rechazó el contrato sin devolver un motivo.') } }];\n"
+      },
+      "id": "3daa4c6f-e3c3-4e50-817d-62fd3efe166d",
+      "name": "08 · Validar respuesta SAP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12896,
+        7984
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('08 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "7c97c2fd-4018-47ae-b60e-742231e9aa44",
+      "name": "08 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        13152,
+        7984
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Libera la licencia. Sin esto las sesiones quedan colgadas."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "5e7703e5-30b9-4a13-8433-a59b862b6080",
+      "name": "08 · Responder",
+      "position": [
+        13440,
+        8176
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1sXyed446gLJB38ElR3wipSpaeQonlgMQhhNriviFPM0/values:batchGet?ranges=Hoja 1&valueRenderOption=UNFORMATTED_VALUE",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c76b05d4-3362-4a14-a088-62e2bdaf8c37",
+      "name": "00 · Leer territorios",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12368,
+        3024
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "slaVuR4Jopj8nTrY",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "notes": "Libro de Territorios de SAP, hoja 'Hoja 1'. Reemplaza a la hoja 'sucursales' de catalogosalo como fuente del selector de sucursal/territorio en cotizacion.html."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-opp-creada",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c8bebc21-5352-48f8-aede-44a3b3710221",
+      "name": "01 · ¿Oportunidad OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        13504,
+        3424
+      ]
+    }
+  ],
+  "connections": {
+    "00 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "00 · Leer catálogos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "00 · Leer catálogos": {
+      "main": [
+        [
+          {
+            "node": "00 · Leer usuarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "00 · Leer usuarios": {
+      "main": [
+        [
+          {
+            "node": "00 · Leer territorios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "00 · Armar catálogo": {
+      "main": [
+        [
+          {
+            "node": "00 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "01 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "01 · Consultar tasa UF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Consultar tasa UF": {
+      "main": [
+        [
+          {
+            "node": "01 · Validar y calcular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Validar y calcular": {
+      "main": [
+        [
+          {
+            "node": "01 · ¿Pasó validación?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · ¿Pasó validación?": {
+      "main": [
+        [
+          {
+            "node": "01 · ¿Crear oportunidad?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "01 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · ¿Crear oportunidad?": {
+      "main": [
+        [
+          {
+            "node": "01 · POST SalesOpportunities",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "01 · POST VID_RTCOT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · POST SalesOpportunities": {
+      "main": [
+        [
+          {
+            "node": "01 · Asignar OpprId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Asignar OpprId": {
+      "main": [
+        [
+          {
+            "node": "01 · ¿Oportunidad OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · POST VID_RTCOT": {
+      "main": [
+        [
+          {
+            "node": "01 · Validar respuesta SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Validar respuesta SAP": {
+      "main": [
+        [
+          {
+            "node": "01 · Armar fila registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Armar fila registro": {
+      "main": [
+        [
+          {
+            "node": "01 · Registrar en Datos CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Registrar en Datos CRM": {
+      "main": [
+        [
+          {
+            "node": "01 · Preparar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Preparar respuesta": {
+      "main": [
+        [
+          {
+            "node": "01 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "01 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "02 · Armar consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Armar consulta": {
+      "main": [
+        [
+          {
+            "node": "02 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "02 · Consultar BusinessPartners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Consultar BusinessPartners": {
+      "main": [
+        [
+          {
+            "node": "02 · Formatear salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Formatear salida": {
+      "main": [
+        [
+          {
+            "node": "02 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "02 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "03 · Armar consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Armar consulta": {
+      "main": [
+        [
+          {
+            "node": "03 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "03 · Consultar SalesOpportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Consultar SalesOpportunities": {
+      "main": [
+        [
+          {
+            "node": "03 · Formatear salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Formatear salida": {
+      "main": [
+        [
+          {
+            "node": "03 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "03 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "04 · Armar payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · Armar payload": {
+      "main": [
+        [
+          {
+            "node": "04 · ¿Payload válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · ¿Payload válido?": {
+      "main": [
+        [
+          {
+            "node": "04 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "04 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "04 · POST SalesOpportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · POST SalesOpportunities": {
+      "main": [
+        [
+          {
+            "node": "04 · Validar respuesta SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · Validar respuesta SAP": {
+      "main": [
+        [
+          {
+            "node": "04 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "04 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "05 · Armar consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Armar consulta": {
+      "main": [
+        [
+          {
+            "node": "05 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "05 · Consultar Quotations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Consultar Quotations": {
+      "main": [
+        [
+          {
+            "node": "05 · Formatear salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Formatear salida": {
+      "main": [
+        [
+          {
+            "node": "05 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "05 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "06 · Armar payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · Armar payload": {
+      "main": [
+        [
+          {
+            "node": "06 · ¿Payload válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · ¿Payload válido?": {
+      "main": [
+        [
+          {
+            "node": "06 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "06 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "06 · POST Quotations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · POST Quotations": {
+      "main": [
+        [
+          {
+            "node": "06 · Validar respuesta SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · Validar respuesta SAP": {
+      "main": [
+        [
+          {
+            "node": "06 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "06 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "07 · Armar consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Armar consulta": {
+      "main": [
+        [
+          {
+            "node": "07 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "07 · Consultar Quotations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Consultar Quotations": {
+      "main": [
+        [
+          {
+            "node": "07 · Formatear salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Formatear salida": {
+      "main": [
+        [
+          {
+            "node": "07 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "07 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "08 · Armar payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · Armar payload": {
+      "main": [
+        [
+          {
+            "node": "08 · ¿Payload válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · ¿Payload válido?": {
+      "main": [
+        [
+          {
+            "node": "08 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "08 · POST VID_RTOV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · POST VID_RTOV": {
+      "main": [
+        [
+          {
+            "node": "08 · Validar respuesta SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · Validar respuesta SAP": {
+      "main": [
+        [
+          {
+            "node": "08 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · Cerrar sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "08 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "00 · Leer territorios": {
+      "main": [
+        [
+          {
+            "node": "00 · Armar catálogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · ¿Oportunidad OK?": {
+      "main": [
+        [
+          {
+            "node": "01 · POST VID_RTCOT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "01 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33d12c87d051182ceb0344fda1a315c580e66430bd3518f34df66de340353961"
+  }
+}

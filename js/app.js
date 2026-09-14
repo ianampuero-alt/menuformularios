@@ -743,7 +743,13 @@
             }).then(function (r) {
                 UI.done();
                 if (!r.ok) { UI.toast('Proceso detenido: ' + r.message, false); return; }
-                var id = (r.obj && (r.obj.opprId || r.obj.OpprId || r.obj.docNum)) || '';
+                // El id REAL de una oportunidad en SAP B1 es SequentialNo (lo que
+                // devuelve el POST a /SalesOpportunities). Se prioriza sobre los
+                // alias del webhook y se GUARDA en sesión para que la cotización
+                // que se cree a continuación lo arrastre en U_OpprId — mismo patrón
+                // que writeQuoteToSap() del proyecto de referencia.
+                var id = (r.obj && (r.obj.SequentialNo || r.obj.opprId || r.obj.OpprId || r.obj.docNum)) || '';
+                if (id) Session.set(K.opprId, id);
                 UI.toast('Oportunidad' + (id ? ' N° ' + id : '') + ' creada en SAP.', true);
                 app.cerrarNuevaOportunidad();
                 app.buscarOportunidades();

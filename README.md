@@ -108,9 +108,83 @@ Los KPIs (potencial y **ponderado** = potencial × % de etapa) se calculan en el
   "nombre":"BRAZO ART 40 MTS - CHILLÁN", "salesStage":"1",
   "potencial": 8400000, "fechaCierre":"2026-09-30",
   "vendedorEmail":"...", "comentarios":"", "sucursal":"SANTIAGO" }
-// salida
-{ "success": true, "data": { "opprId": 414 } }
+// salida — opprId DEBE ser el SequentialNo que devuelve SAP
+{ "success": true, "data": { "opprId": 110911, "SequentialNo": 110911 } }
 ```
+
+**n8n → SAP (entidad estándar `SalesOpportunities`).** El POST debe devolver
+`SequentialNo`: **ese es el id de la oportunidad** (no `DocEntry`) y es el valor que
+luego se pone en `U_OpprId` de la cotización. Payload mínimo confirmado contra SAP
+(ver proyecto de referencia `sap/payloads/stage3a-sales-opportunity.json`):
+
+```jsonc
+{
+  "CardCode":"C76110235-4", "SalesPerson": 253,      // SlpCode numérico, NO email
+  "ContactPerson": 18243, "Source": 25, "InterestLevel": 1,
+  "StartDate":"2026-07-24", "PredictedClosingDate":"2026-08-23",
+  "MaxLocalTotal": 5107547.83, "Status":"sos_Open",
+  "OpportunityName":"QA ARRIENDO ...", "DataOwnershipfield": 1146,
+  "Territory": 404, "ClosingType":"sos_Days", "OpportunityType":"boOpSales",
+  "U_TipoNegocio":"ARRIENDO", "U_G_User":"vendedor@alo-group.com",
+  "SalesOpportunitiesLines":[
+    { "SalesPerson":253, "StartDate":"2026-07-24", "ClosingDate":"2026-08-23",
+      "StageKey":2, "PercentageRate":1, "MaxLocalTotal":5107547.83,
+      "Status":"so_Open", "DocumentType":"bodt_MinusOne",
+      "ContactPerson":18243, "U_TipoDocArriendo":"--" } ]
+}
+```
+
+#### `/webhook/cotizaciones/procesar` — Oportunidad → Cotización (crítico)
+
+Este es el flujo que **debe replicar** `writeQuoteToSap()` del proyecto de
+referencia. La cotización de arriendo es el **UDO `VID_RTCOT`** y se relaciona con
+la oportunidad **por el UDF `U_OpprId` = `SequentialNo`** (no es un LinkedDocument
+estándar de SAP).
+
+```jsonc
+// entrada (lo que envía cotizacion.html)
+{ "userEmail":"...", "vendedorEmail":"...", "sucursal":"SANTIAGO",
+  "territorio":"SANTIAGO", "cardCode":"C76110235-4",
+  "destino": { "lugar":"Andacollo" },
+  "lineas":[ { "itemCode":"COBTP003", "durQty":30, "descP":0,
+               "incSeguro":true, "incAlistamiento":true } ],
+  "opprId": 110911 }        // null si el vendedor NO venía de una oportunidad
+```
+
+**Secuencia obligatoria en n8n (misma lógica que la referencia):**
+
+```text
+1. Login SAP (cookie B1SESSION).
+2. Resolver-o-crear la oportunidad:
+     · opprId presente  → usarlo tal cual.
+     · opprId null      → POST /SalesOpportunities → leer SequentialNo.
+     · Si NO hay SequentialNo numérico → responder
+       { "_control": { "continue": false, "message": "No se pudo crear la oportunidad" } }
+       y DETENERSE: NO crear la cotización.
+3. POST /VID_RTCOT con U_OpprId = SequentialNo:
+     {
+       "U_CardCode":"C76110235-4", "U_Vendedor":"253", "U_Contacto":"18243",
+       "U_OpprId": 110911,                    // ← RELACIÓN con la oportunidad
+       "U_RefDate":"...", "U_DueDate":"...", "U_Estado":"A", "U_Moneda":"CLP",
+       "U_Neto":..., "U_Impuesto":..., "U_Total":..., "U_Sucursal":"SANTIAGO",
+       "U_Rut":"76110235-4", "U_APROB_COM":"NO","U_APROB_FIN":"NO","U_APROB_LOG":"NO",
+       "VID_RTCOTDCollection":[  { "U_ItemCode":"COBTP003","U_DurQty":30,
+             "U_Cantidad":1,"U_HorMin":180,"U_TarBase":...,"U_Neto":...,
+             "U_Linea":1 } ],                 // líneas de equipo
+       "VID_RTCOTADCollection":[ { "U_ItemCode":"SEG-COBTP003","U_Cantidad":1,
+             "U_Precio":...,"U_LineaAsoc":1,"U_CuotaAsoc":1 } ]  // seguro/alistamiento
+     }
+4. Leer DocEntry (obligatorio) y DocNum del 201. Logout.
+```
+
+```jsonc
+// salida — devolver los tres identificadores para verificar el amarre
+{ "success": true, "data": { "opprId": 110911, "docEntry": 135184, "docNum": 135184 } }
+```
+
+El IVA **no** se envía cabecera-arriba como campo del vendedor: se calcula en SAP.
+Idempotencia recomendada por `RequestId` para no duplicar (oportunidad + cotización)
+ante reintentos, tal como el `IdempotencyKey = ALO-CRM-QA-<requestId>` de la referencia.
 
 #### `/webhook/ofertas/listar`
 ```jsonc

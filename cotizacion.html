@@ -688,12 +688,22 @@
                 const detenido = result && result._control && result._control.continue === false;
 
                 if (response.ok && !detenido) {
-                    const docNum = result.docNum || (result.data && result.data.docNum) || '';
-                    
+                    const data = result.data || result;
+                    // La cotización de arriendo es el UDO VID_RTCOT; su id es DocEntry
+                    // y su folio DocNum. La relación con la oportunidad viaja en el UDF
+                    // U_OpprId = SequentialNo (ver proyecto de referencia). n8n debe
+                    // devolver ambos para poder verificar el amarre en pantalla.
+                    const docNum = data.docNum || data.DocNum || '';
+                    const docEntry = data.docEntry || data.DocEntry || '';
+                    const opprLink = data.opprId || data.OpprId || data.U_OpprId
+                                  || (data.SequentialNo) || opprIdStored || '';
+
                     // Limpiar el contexto de Oportunidad tras crear la cotización
                     sessionStorage.removeItem('alo_oppr_id');
-                    
-                    toast('¡Cotización' + (docNum ? ' N° ' + docNum : '') + ' creada exitosamente en SAP!', true);
+
+                    const ref = docNum || docEntry;
+                    toast('¡Cotización' + (ref ? ' N° ' + ref : '') + ' creada en SAP'
+                        + (opprLink ? ' y ligada a la Oportunidad N° ' + opprLink : '') + '!', true);
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
                 } else {
                     const msg = (result && (result.message || (result._control && result._control.message)))
