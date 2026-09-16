@@ -1,0 +1,107 @@
+USE [BI_SAPB1];
+GO
+
+/* =====================================================================
+   CONSOLIDADO DE OPORTUNIDADES - v4  (SQL Server)
+   Alineado con las vistas HANA MAESTRO v4:
+     - NomCompetidor / Ganador poblados desde OPR3 + OCMT
+     - Filtro: solo ultimos 3 meses por FECHA DE INICIO (OpenDate)
+   Requisito: las 11 vistas VW_MKT_OPORTUNIDADES_* (v4) ya creadas en HANA.
+   La tabla se auto-infiere desde la vista -> re-crearla porque cambio el
+   tipo de NomCompetidor (ahora NVARCHAR(255)). Ejecutar TODO de corrido.
+   ===================================================================== */
+
+
+/* PASO 1 - Borrar tablas viejas (cambio de tipos: NomCompetidor 255) */
+IF OBJECT_ID('dbo.TBL_MKT_OPORTUNIDADES_STG', 'U') IS NOT NULL
+    DROP TABLE dbo.TBL_MKT_OPORTUNIDADES_STG;
+GO
+IF OBJECT_ID('dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO', 'U') IS NOT NULL
+    DROP TABLE dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO;
+GO
+
+
+/* PASO 2 - Crear la tabla consolidada con estructura AUTO-INFERIDA */
+SELECT TOP 0
+    CAST(N'' AS NVARCHAR(50)) AS [Sociedad],
+    *
+INTO dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO
+FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PARAMETROS_RENTAL"."VW_MKT_OPORTUNIDADES_CL"');
+GO
+
+
+/* PASO 3 - Crear / actualizar el procedimiento (staging + swap atomico) */
+CREATE OR ALTER PROCEDURE [dbo].[SP_SYNC_MKT_OPORTUNIDADES]
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    -- Fecha de corte: hoy menos 1 AÑO
+    DECLARE @Desde DATE = DATEADD(YEAR, -1, CAST(GETDATE() AS DATE));
+
+    BEGIN TRY
+        -- Staging con la misma estructura que la consolidada
+        IF OBJECT_ID('dbo.TBL_MKT_OPORTUNIDADES_STG', 'U') IS NOT NULL
+            TRUNCATE TABLE dbo.TBL_MKT_OPORTUNIDADES_STG;
+        ELSE
+            SELECT * INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+            FROM dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO WHERE 1 = 0;
+
+        -- Carga de los 11 origenes a staging
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'RENTAL',      * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PARAMETROS_RENTAL"."VW_MKT_OPORTUNIDADES_CL"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'TRAINING',    * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PARAMETROS_TRAINING"."VW_MKT_OPORTUNIDADES_TRAINING"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'ALOLOGISTIC', * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PARAMETROS_ALOLOGISTIC"."VW_MKT_OPORTUNIDADES_LOG"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'VENTAS_USD',  * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_ALOVENTAS_USD"."VW_MKT_OPORTUNIDADES_VTA"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'ARGENTINA',   * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_AGAR_V2"."VW_MKT_OPORTUNIDADES_AR"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'COLOMBIA',    * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_AGCO"."VW_MKT_OPORTUNIDADES_COL"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'PERU',        * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_AGP2"."VW_MKT_OPORTUNIDADES_PE"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'PANAMA',      * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_AGPA"."VW_MKT_OPORTUNIDADES_PAN"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'PARAGUAY',    * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_ALOPY"."VW_MKT_OPORTUNIDADES_PY"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'URUGUAY',     * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_ALOUY"."VW_MKT_OPORTUNIDADES_UY"');
+        INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_STG
+        SELECT 'ECUADOR',     * FROM OPENQUERY([LK_HANA], 'SELECT * FROM "SBO_PRD_AREC"."VW_MKT_OPORTUNIDADES_ECU"');
+
+        -- Swap atomico: solo ultimos 3 meses por FECHA DE INICIO (OpenDate)
+        BEGIN TRANSACTION;
+            TRUNCATE TABLE dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO;
+            INSERT INTO dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO
+            SELECT * FROM dbo.TBL_MKT_OPORTUNIDADES_STG
+            WHERE [FechaInicio] >= @Desde;      -- <<< ultimos 3 meses
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+
+/* PASO 4 - Primera ejecucion */
+EXEC dbo.SP_SYNC_MKT_OPORTUNIDADES;
+GO
+
+
+/* PASO 5 - Validaciones */
+-- Conteo por sociedad
+SELECT Sociedad, COUNT(*) AS Registros
+FROM dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO
+GROUP BY Sociedad
+ORDER BY Sociedad;
+
+-- Verificar competidor / ganador ya poblados
+SELECT TOP 20 Sociedad, NroOport, NomEstado, NomCompetidor, Ganador
+FROM dbo.TBL_MKT_OPORTUNIDADES_CONSOLIDADO
+WHERE NomCompetidor IS NOT NULL OR Ganador IS NOT NULL;
+GO

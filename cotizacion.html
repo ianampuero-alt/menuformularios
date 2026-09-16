@@ -340,36 +340,39 @@
             .row { grid-template-columns: 1fr; gap: 0; }
         }
     </style>
+    <link rel="stylesheet" href="css/alo.css">
 </head>
 <body>
-    <header class="topbar">
-        <div class="shell">
-            <aside class="brand">
-                <div class="logo">
-                    <img src="" alt="ALO Group" id="alo-logo" style="display:none;">
-                </div>
-            </aside>
-        </div>
-        <div class="client-badge" id="client-badge-container">
-            <div class="client-avatar" id="client-avatar">AL</div>
-            <div class="client-info">
-                <span class="name" id="display-client-name">Seleccionar Cliente</span>
-                <span class="code">RUT: <strong id="display-rut" style="color:#fff;">--</strong> | CardCode: <strong
-                        id="display-cardcode" style="color:var(--amber);">--</strong></span>
+    <header class="navbar">
+        <div class="navbar-brand">
+            <div class="logo">
+                <img src="" alt="ALO Group" id="alo-logo" style="display:none;">
             </div>
+            <span class="brand-title">Portal Comercial</span>
         </div>
-        <button class="btn-back" id="btnMenuBack" type="button" onclick="window.location.href='dashboard.html'">
-            <i class="material-icons">arrow_back</i> Menú
-        </button>
+        <nav class="nav-menu">
+            <a href="dashboard.html">Inicio</a>
+            <a href="clientes.html">Clientes</a>
+            <a href="cotizacion.html" class="active">Cotizaciones</a>
+            <a href="#" onclick="app.logout()" class="logout">Cerrar Sesión</a>
+        </nav>
     </header>
     <main class="container">
-        <div class="hero-header">
-            <div class="eyebrow">Gestión de Arriendos</div>
-            <h1>Nueva Cotización (VID_RTCOT)</h1>
+        <div class="page-head">
+            <h1>Nueva Cotización</h1>
             <p>Ingresa los parámetros del equipo y adicionales para sincronizar con SAP Service Layer.</p>
         </div>
 
-        <div class="form-card">
+        <!-- Contexto del cliente (mantiene los IDs que usa el JS) -->
+        <div class="panel" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 20px;">
+            <div class="client-avatar" id="client-avatar">AL</div>
+            <div class="client-info">
+                <span class="name" id="display-client-name" style="font-weight:700;color:var(--navy-1);">Seleccionar Cliente</span>
+                <span class="code" style="display:block;font-size:.8rem;color:var(--muted);">RUT: <strong id="display-rut">--</strong> · CardCode: <strong id="display-cardcode" style="color:var(--amber);">--</strong></span>
+            </div>
+        </div>
+
+        <div class="panel">
             <!-- Banner Informativo de Oportunidad -->
             <div id="opp-banner" class="opp-banner">
                 <i class="material-icons">extension</i>
@@ -392,12 +395,26 @@
                     <label for="sucursal">Sucursal / Territorio</label>
                     <select id="sucursal" name="sucursal" required>
                         <option value="">Seleccionar sucursal…</option>
-                        <!-- Se carga desde /webhook/catalogos (hoja "sucursales") -->
+                        <!-- Solo las 13 sucursales válidas de SAP (valor = código U_Sucursal) -->
+                        <option value="IQUIQUE">Iquique</option>
+                        <option value="ANTOFAGA">Antofagasta</option>
+                        <option value="COPIAPO">Copiapó</option>
+                        <option value="LASERENA">La Serena</option>
+                        <option value="COQUIMBO">Coquimbo</option>
+                        <option value="SANTIAGO">Santiago</option>
+                        <option value="VALPARAI">Valparaíso</option>
+                        <option value="QUILPUE">Quilpué</option>
+                        <option value="RANCAGUA">Rancagua</option>
+                        <option value="CURICO">Curicó</option>
+                        <option value="CONCEPCI">Concepción</option>
+                        <option value="PMONTT">Puerto Montt</option>
                     </select>
                 </div>
                 <div class="field">
-                    <label for="destinoLugar">Destino (dónde van las máquinas)</label>
-                    <input id="destinoLugar" name="destinoLugar" type="text" placeholder="Ej: Pje Nuevo 40 Nº602 Puerto Montt" required>
+                    <label for="destinoLugar">Destino (dirección de despacho del cliente)</label>
+                    <select id="destinoLugar" name="destinoLugar" required>
+                        <option value="">Selecciona un cliente para ver sus destinos…</option>
+                    </select>
                 </div>
 
                 <div class="field-group-title">3. Equipos a Arrendar</div>
@@ -463,6 +480,7 @@
         const WEBHOOK_PATH = '/webhook/cotizaciones/procesar';
         const WEBHOOK_COTIZACION = N8N_BASE_URL + WEBHOOK_PATH;
         const WEBHOOK_CATALOGOS = N8N_BASE_URL + '/webhook/catalogos';
+        const WEBHOOK_DIRECCIONES = N8N_BASE_URL + '/webhook/clientes/direcciones';
         // ============================
 
         let CATALOGO = null; // se llena con la respuesta de /webhook/catalogos
@@ -491,19 +509,42 @@
             });
         }
 
-        function llenarSelectSucursales(select) {
-            // Se llena desde el maestro de Territorios de SAP (data.territorios:
-            // {id, descripcion}), ya filtrado en el backend a solo comunas (no regiones).
-            // La zona Norte/Resto para el cálculo de precios se determina comparando
-            // esa misma descripción contra Iquique/Antofagasta/Copiapó.
-            const territorios = (CATALOGO && CATALOGO.territorios) || [];
-            select.innerHTML = '<option value="">Seleccionar sucursal / territorio…</option>';
-            territorios.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = String(t.id);
-                opt.textContent = t.descripcion || String(t.id);
-                select.appendChild(opt);
-            });
+        // Las 13 sucursales válidas de SAP ya están fijas en el HTML (value = código
+        // U_Sucursal). No se cargan desde el catálogo para evitar que el vendedor
+        // elija una que SAP rechace (error -1004). Se deja como no-op por compatibilidad.
+        function llenarSelectSucursales() { /* fijas en el HTML */ }
+
+        /**
+         * Carga las direcciones de despacho REALES del cliente (bo_ShipTo con Tipo de
+         * Faena) en el <select id="destinoLugar">. SAP exige que el destino sea una de
+         * ellas; por eso no es texto libre.
+         */
+        async function cargarDirecciones(cardCode) {
+            const sel = document.getElementById('destinoLugar');
+            if (!sel) return;
+            if (!cardCode) { sel.innerHTML = '<option value="">Selecciona un cliente…</option>'; return; }
+            sel.innerHTML = '<option value="">Cargando destinos…</option>';
+            try {
+                const res = await fetch(WEBHOOK_DIRECCIONES, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cardCode: cardCode })
+                });
+                const body = await res.json();
+                const dirs = (body && body.direcciones) || [];
+                if (!dirs.length) {
+                    sel.innerHTML = '<option value="">El cliente no tiene destinos con Tipo de Faena en SAP</option>';
+                    return;
+                }
+                sel.innerHTML = '<option value="">Selecciona el destino…</option>';
+                dirs.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.name;
+                    opt.textContent = d.name + (d.faena ? ' · ' + d.faena : '');
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                sel.innerHTML = '<option value="">No se pudieron cargar los destinos</option>';
+            }
         }
 
         /** Crea una nueva línea de equipo a partir del <template>, ya con los selects llenos. */
@@ -579,6 +620,7 @@
             if (cardCode) {
                 document.getElementById('display-cardcode').textContent = cardCode;
                 document.getElementById('cardCode').value = cardCode;
+                cargarDirecciones(cardCode); // destinos de despacho del cliente
             }
             if (rut) {
                 document.getElementById('display-rut').textContent = rut;
@@ -597,10 +639,11 @@
             cargarCatalogos();
         });
 
-        // Reflejar CardCode en el badge al editar
-        document.getElementById('cardCode').addEventListener('input', (e) => {
+        // Reflejar CardCode en el badge al editar y recargar sus destinos
+        document.getElementById('cardCode').addEventListener('change', (e) => {
             const val = e.target.value.trim();
             document.getElementById('display-cardcode').textContent = val || '--';
+            cargarDirecciones(val);
         });
 
         function toast(message, ok) {

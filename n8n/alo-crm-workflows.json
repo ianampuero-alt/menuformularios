@@ -203,7 +203,7 @@
     },
     {
       "parameters": {
-        "jsCode": "/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\n/** Trae los catálogos desde /webhook/catalogos (Google Sheets). */\nasync function getCatalogos() {\n  const r = await this.helpers.httpRequest({\n    method: 'GET', url: 'https://alogroup.app.n8n.cloud/webhook/catalogos', json: true,\n  });\n  if (!r || !r.data) throw new Error('El webhook /catalogos no devolvió datos.');\n  return r.data;\n}\n\nconst SAP_BASE = 'https://sap.alo-group.com:50000/b1s/v1';\n\n/** SELECT Price FROM ITM1 WHERE ItemCode=... AND PriceList=... (vía Service Layer). */\nasync function getItemPrice(ctx, itemCode, priceList, cookie) {\n  const r = await ctx.helpers.httpRequest({\n    method: 'GET',\n    url: SAP_BASE + \"/Items('\" + itemCode + \"')\",\n    qs: { '$select': 'ItemCode,ItemPrices' },\n    headers: { Cookie: cookie },\n    json: true,\n    skipSslCertificateValidation: true,\n  });\n  const entry = (r.ItemPrices || []).find(p => String(p.PriceList) === String(priceList));\n  return entry ? Number(entry.Price) || 0 : 0;\n}\n\n/** Datos de facturación del cliente: nombre, condición de pago, RUT y dirección\n * de facturación (bo_BillTo). Viene de BusinessPartners, no lo escribe el vendedor. */\nasync function getDatosFacturacion(ctx, cardCode, cookie) {\n  const bp = await ctx.helpers.httpRequest({\n    method: 'GET',\n    url: SAP_BASE + \"/BusinessPartners('\" + cardCode + \"')\",\n    qs: { '$select': 'CardCode,CardName,PayTermsGrpCode,FederalTaxID,BPAddresses' },\n    headers: { Cookie: cookie },\n    json: true,\n    skipSslCertificateValidation: true,\n  });\n  const billTo = (bp.BPAddresses || []).find(a => a.AddressType === 'bo_BillTo') || null;\n  let destFact = '', destFAddr = '';\n  if (billTo) {\n    destFact = billTo.AddressName || '';\n    let countryName = billTo.Country || '';\n    if (billTo.Country) {\n      try {\n        const pais = await ctx.helpers.httpRequest({\n          method: 'GET', url: SAP_BASE + \"/Countries('\" + billTo.Country + \"')\",\n          headers: { Cookie: cookie }, json: true, skipSslCertificateValidation: true,\n        });\n        countryName = pais.Name || billTo.Country;\n      } catch (err) { /* se queda con el código de país si Countries falla */ }\n    }\n    destFAddr = [billTo.Street, billTo.City, countryName].filter(Boolean).join(' ');\n  }\n  return {\n    cardName: bp.CardName || '',\n    condPago: bp.PayTermsGrpCode != null ? String(bp.PayTermsGrpCode) : '',\n    rut: bp.FederalTaxID || '',\n    destFact, destFAddr,\n  };\n}\n\nconst norm = (v) => String(v === undefined || v === null ? '' : v)\n  .trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// ---------- Tramos de días -> PriceList de SAP (confirmados contra Formatted Search real) ----------\nconst ZONA_NORTE = new Set(['IQUIQUE', 'ANTOFAGASTA', 'COPIAPO']);\nconst TRAMOS_EQUIPO = [\n  [1, 6, '6', '1'], [7, 14, '7', '2'], [15, 20, '8', '3'], [21, 29, '9', '4'], [30, Infinity, '10', '5'],\n];\nconst TRAMOS_SEGURO = [\n  [1, 6, '1'], [7, 13, '2'], [14, 20, '3'], [21, 29, '4'], [30, Infinity, '5'],\n];\nfunction priceListEquipo(dur, zonaNorte) {\n  for (const [lo, hi, zn, base] of TRAMOS_EQUIPO) if (dur >= lo && dur <= hi) return zonaNorte ? zn : base;\n  return null;\n}\nfunction priceListSeguro(dur) {\n  for (const [lo, hi, l] of TRAMOS_SEGURO) if (dur >= lo && dur <= hi) return l;\n  return null;\n}\n\nconst body = $('01 · Webhook').first().json.body || {};\nconst ufRes = $('01 · Consultar tasa UF').first().json;\nconst sapCookie = 'B1SESSION=' + $('01 · Abrir sesión SAP').first().json.SessionId;\n\nconst cat = await getCatalogos.call(this);\nconst P   = cat.parametrosMap || {};\n\n// ---------- entrada ----------\nconst cardCode        = body.cardCode || body.CardCode;\nconst vendedorEmail   = (body.vendedorEmail || body.userEmail || '').toLowerCase().trim();\nconst sucursalCod     = String(body.sucursal || body.Branch || '').trim();\nconst opprIdIn        = body.opprId || body.OpprId || null;\n\n// Destino (dónde van las máquinas): texto libre -> U_Dest / U_DestAddr.\n// (U_DestFact/U_DestFAddr son la dirección de FACTURACIÓN del cliente en SAP,\n// se resuelven solas más abajo — no se tocan aquí.)\nconst destino    = body.destino || {};\nconst destLugar  = String(destino.lugar || body.destinoLugar || '').trim();\n\n// Líneas de equipo: acepta el formato nuevo (array `lineas`) y, por\n// compatibilidad, el formato viejo de un solo itemCode/durQty/descP.\nlet lineasIn = Array.isArray(body.lineas) ? body.lineas : null;\nif (!lineasIn) {\n  const legacyItem = body.itemCode || body.ItemCode;\n  if (legacyItem) {\n    lineasIn = [{\n      itemCode: legacyItem,\n      durQty: body.durQty !== undefined ? body.durQty : body.DurationQuantity,\n      descP: body.descP !== undefined ? body.descP : body.DiscountPercent,\n      incSeguro: body.incSeguro !== undefined ? body.incSeguro : true,\n      incAlistamiento: body.incAlistamiento !== undefined ? body.incAlistamiento : true,\n    }];\n  } else {\n    lineasIn = [];\n  }\n}\n\nconst stop = (msg) => [{ json: { success: false, _control: { continue: false, message: msg } } }];\n\n// ---------- 1. validación de forma ----------\nconst e = [];\nif (!cardCode)      e.push('falta el código de cliente');\nif (!vendedorEmail) e.push('falta el correo del vendedor');\nif (!sucursalCod)   e.push('falta la sucursal/territorio');\nif (!destLugar)     e.push('falta el destino (dirección) de las máquinas');\nif (!lineasIn.length) e.push('la cotización no tiene ningún equipo');\n\nconst DESCUENTO_MAX = 90; // tope duro de UI/negocio; independiente del parámetro de SAP.\n\nconst lineasParseadas = lineasIn.map((l, i) => {\n  const n = i + 1;\n  const itemCode = String(l.itemCode || l.ItemCode || '').trim();\n  const rawDur = (l.durQty !== undefined && l.durQty !== null && l.durQty !== '')\n               ? l.durQty : l.DurationQuantity;\n  const durQty = (rawDur === undefined || rawDur === null || rawDur === '')\n               ? NaN : parseInt(rawDur, 10);\n  const descP = parseFloat(l.descP !== undefined ? l.descP : l.DiscountPercent) || 0;\n  const incSeguro       = l.incSeguro !== undefined ? !!l.incSeguro : true;\n  const incAlistamiento = l.incAlistamiento !== undefined ? !!l.incAlistamiento : true;\n\n  if (!itemCode) e.push('línea ' + n + ': falta el código de equipo');\n  if (!Number.isFinite(durQty)) e.push('línea ' + n + ': falta la cantidad de días de arriendo');\n  else if (durQty < 3) e.push('línea ' + n + ': los días de arriendo deben ser 3 o más (mínimo 3, sin máximo)');\n  if (descP < 0 || descP > DESCUENTO_MAX)\n    e.push('línea ' + n + ': el descuento debe estar entre 0 y ' + DESCUENTO_MAX + '%');\n\n  return { itemCode, durQty, descP, incSeguro, incAlistamiento };\n});\n\nif (e.length) return stop('Validación fallida: ' + e.join(', ') + '.');\n\n// ---------- 2. vendedor: SIN código de SAP no se emite ----------\nconst vend = (cat.vendedores || []).find(v =>\n  String(v.email || '').toLowerCase().trim() === vendedorEmail);\nif (!vend) {\n  return stop('El correo ' + vendedorEmail + ' no aparece en la columna CORREO de ' +\n              'USUARIOS-DATOMAESTRO (libro USUARIOS-ALO). Agrégalo antes de cotizar.');\n}\nif (!vend.sales_person_code) {\n  return stop('El vendedor ' + vendedorEmail + ' está en USUARIOS-DATOMAESTRO, pero su ' +\n              'columna EMPLEADO_VENTAS no tiene un código numérico de SAP ' +\n              '(valor actual: \"' + (vend.empleado_ventas || '') + '\"). ' +\n              'Sin ese código la cotización quedaría a nombre de otra persona.');\n}\nconst slpCode = parseInt(vend.sales_person_code, 10);\n\n// ---------- 3. sucursal/territorio y zona ----------\nconst suc = (cat.territorios || []).find(t =>\n  String(t.id) === sucursalCod || norm(t.descripcion) === norm(sucursalCod));\nif (!suc) return stop('El territorio \"' + sucursalCod + '\" no existe en el catálogo de Territorios SAP.');\nconst zonaNorte = ZONA_NORTE.has(norm(suc.descripcion));\n\n// ---------- 4. tope de descuento, desde parámetros (puede ser más estricto) ----------\nconst topeDescParam = Number(P.descuento_max_pct);\nconst topeDesc = isFinite(topeDescParam) ? Math.min(topeDescParam, DESCUENTO_MAX) : DESCUENTO_MAX;\nconst excedidas = lineasParseadas.filter(l => l.descP > topeDesc);\nif (excedidas.length) {\n  return stop('El descuento supera el tope autorizado de ' + topeDesc +\n              '% en el/los equipo(s): ' + excedidas.map(l => l.itemCode).join(', ') + '.');\n}\n\n// ---------- 5. UF: sin fallback inventado ----------\nlet ufRate = null;\nif (ufRes && ufRes.data !== undefined && ufRes.data !== null) ufRate = Number(ufRes.data);\nelse if (ufRes && ufRes.value !== undefined && ufRes.value !== null) ufRate = Number(ufRes.value);\nelse if (ufRes && ufRes.Rate !== undefined) ufRate = Number(ufRes.Rate);\n\nconst necesitaUf = lineasParseadas.some(l => l.incSeguro);\nif (necesitaUf && !(ufRate > 0)) {\n  return stop('No se pudo obtener la tasa de la UF desde SAP. ' +\n              'El seguro se calcula en UF, así que la cotización no se emite. ' +\n              'Detalle: ' + sapError(ufRes, 'respuesta vacía de GetCurrencyRate') + '.');\n}\n\n// ---------- 5b. Datos de facturación del cliente (desde SAP, no del formulario) ----------\nconst fact = await getDatosFacturacion(this, cardCode, sapCookie);\n\n// Vigencia de la cotización: hoy + días de validez configurados en parámetros.\nconst vence = new Date(Date.now() + (Number(P.dias_validez_oferta) || 30) * 86400000)\n  .toISOString().slice(0, 10);\n\n// ---------- 6. resolver precio real (Items/ItemPrices de SAP) y calcular ----------\nconst round = (n) => Math.round(n);\nconst horMinDefault = Number(P.horas_min_default) || 180;\n\nconst equipoLines = [];\nconst adicionales = [];\nconst detalleLineas = []; // para trazabilidad / registro en Sheets\n\nlet netoTotal = 0;\n\nfor (let i = 0; i < lineasParseadas.length; i++) {\n  const l = lineasParseadas[i];\n  const n = i + 1; // 1-based: es el U_LineaAsoc que espera VID_RTCOTADCollection\n\n  const eqs = (cat.equipos || []).filter(x =>\n    String(x.item_code || '').toUpperCase().trim() === l.itemCode.toUpperCase());\n  if (!eqs.length) return stop('El equipo ' + l.itemCode + ' no está en la hoja \"equipos\" del catálogo.');\n  const eq = eqs[0];\n  const horMin = Number(eq.horas_min) || horMinDefault;\n\n  const plEquipo = priceListEquipo(l.durQty, zonaNorte);\n  if (!plEquipo) return stop('línea ' + n + ': no existe lista de precio para ' + l.durQty + ' días.');\n  const precioBaseDiario = await getItemPrice(this, l.itemCode, plEquipo, sapCookie);\n  if (!(precioBaseDiario > 0)) {\n    return stop('El equipo ' + l.itemCode + ' no tiene precio cargado en SAP (Lista de precios ' + plEquipo + ').');\n  }\n\n  const valHr      = round(precioBaseDiario / (horMin / 30));\n  const tarBase    = precioBaseDiario * l.durQty;\n  const montoDesc  = round(tarBase * (l.descP / 100));\n  const netoEquipo = tarBase - montoDesc;\n\n  equipoLines.push({\n    U_ItemCode: l.itemCode, U_DurQty: l.durQty, U_HorMin: horMin,\n    U_ValHr: valHr, U_ValHrEx: valHr, U_TarBase: tarBase,\n    U_DescP: l.descP, U_Desc: montoDesc, U_Neto: netoEquipo,\n    U_Dest: destLugar, U_DestAddr: destLugar,\n  });\n\n  let netoAdicLinea = 0;\n  let seguroClp = 0, alistaClp = 0;\n\n  if (l.incSeguro) {\n    const plSeguro = priceListSeguro(l.durQty);\n    const precioUf = plSeguro ? await getItemPrice(this, 'SEG-' + l.itemCode, plSeguro, sapCookie) : 0;\n    seguroClp = round(precioUf * ufRate * l.durQty);\n    netoAdicLinea += seguroClp;\n    adicionales.push({ U_ItemCode: 'SEG-' + l.itemCode, U_LineaAsoc: n, U_Precio: seguroClp,\n                       U_DescP: 0, U_Desc: 0, U_Neto: seguroClp, U_Dim2: 'SEGUROAR' });\n  }\n  if (l.incAlistamiento) {\n    alistaClp = round(await getItemPrice(this, 'zALI-' + l.itemCode, '1', sapCookie));\n    netoAdicLinea += alistaClp;\n    adicionales.push({ U_ItemCode: 'zALI-' + l.itemCode, U_LineaAsoc: n, U_Precio: alistaClp,\n                       U_DescP: 0, U_Desc: 0, U_Neto: alistaClp, U_Dim2: 'ALISTAAR' });\n  }\n\n  netoTotal += netoEquipo + netoAdicLinea;\n\n  detalleLineas.push({\n    itemCode: l.itemCode, itemNombre: eq.nombre || l.itemCode, categoria: eq.categoria || '',\n    dias: l.durQty, descuentoPct: l.descP, descuentoMonto: montoDesc,\n    precioBaseDiario, seguroClp, alistamientoClp: alistaClp, neto: netoEquipo + netoAdicLinea,\n  });\n}\n\nconst ivaPct    = Number(P.iva_pct);\nconst impuesto  = round(netoTotal * (isFinite(ivaPct) ? ivaPct : 0.19));\nconst totalDoc  = netoTotal + impuesto;\nconst hoy       = new Date().toISOString().slice(0, 10);\n\n// ---------- 7. oportunidad ----------\nconst createOpp = !opprIdIn;\nconst opportunityPayload = createOpp ? {\n  CardCode: cardCode,\n  SalesPerson: slpCode,\n  StartDate: hoy,\n  MaxLocalTotal: totalDoc,\n  Remarks: 'Arriendo ' + cardCode + ' - ' + detalleLineas.map(d => d.itemCode).join('+') + '. Creada automáticamente desde el cotizador web.',\n  Status: 'sos_Open',\n  OpportunityType: 'boOpSales',\n  U_TipoNegocio: 'ARRIENDO',\n  SalesOpportunitiesLines: [{\n    SalesPerson: slpCode, StartDate: hoy, StageKey: 2,\n    PercentageRate: 20, MaxLocalTotal: totalDoc, Status: 'so_Open',\n  }],\n} : null;\n\nconst quotePayload = {\n  U_CardCode: cardCode,\n  U_CardName: fact.cardName,\n  U_Contacto: '',\n  U_RefDate: hoy, U_DocDate: hoy, U_DueDate: vence,\n  U_Vendedor: String(slpCode),\n  U_OpprId: opprIdIn ? parseInt(opprIdIn, 10) : null,\n  U_Estado: 'A',\n  U_PerFact: P.periodo_facturacion_default || 'D',\n  U_DiaFact: '',\n  U_Moneda: P.moneda || 'CLP',\n  U_DescP: 0, U_Desc: 0,\n  U_Neto: netoTotal, U_Impuesto: impuesto,\n  U_Total: totalDoc, U_TotalPQ: totalDoc,\n  U_Sucursal: suc.descripcion,\n  U_Dest: destLugar,\n  U_DestAddr: destLugar,\n  U_DestFact: fact.destFact,\n  U_DestFAddr: fact.destFAddr,\n  U_CondPago: fact.condPago,\n  U_Rut: fact.rut,\n  U_APROB_COM: 'NO',\n  U_APROB_FIN: 'NO',\n  U_APROB_LOG: 'NO',\n  U_TipoContrato: P.tipo_contrato_default || 'STD',\n  U_Comment: 'Creada automáticamente desde el cotizador web',\n  VID_RTCOTDCollection: equipoLines,\n  VID_RTCOTADCollection: adicionales,\n};\n\nreturn [{ json: {\n  success: true, createOpp, opportunityPayload, quotePayload,\n  _calculo: {\n    zonaNorte, sucursal: suc.descripcion, slpCode, ufRate,\n    netoTotal, impuesto, totalDoc,\n    destino: { lugar: destLugar },\n    lineas: detalleLineas,\n    vendedorEmail, vendedorNombre: vend.nombre || '',\n    cardCode,\n  },\n} }];"
+        "jsCode": "/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\n/** Trae los catálogos desde /webhook/catalogos (Google Sheets). */\nasync function getCatalogos() {\n  const r = await this.helpers.httpRequest({\n    method: 'GET', url: 'https://alogroup.app.n8n.cloud/webhook/catalogos', json: true,\n  });\n  if (!r || !r.data) throw new Error('El webhook /catalogos no devolvió datos.');\n  return r.data;\n}\n\nconst SAP_BASE = 'https://sap.alo-group.com:50000/b1s/v1';\n\n/** SELECT Price FROM ITM1 WHERE ItemCode=... AND PriceList=... (vía Service Layer). */\nasync function getItemPrice(ctx, itemCode, priceList, cookie) {\n  const r = await ctx.helpers.httpRequest({\n    method: 'GET',\n    url: SAP_BASE + \"/Items('\" + itemCode + \"')\",\n    qs: { '$select': 'ItemCode,ItemPrices' },\n    headers: { Cookie: cookie },\n    json: true,\n    skipSslCertificateValidation: true,\n  });\n  const entry = (r.ItemPrices || []).find(p => String(p.PriceList) === String(priceList));\n  return entry ? Number(entry.Price) || 0 : 0;\n}\n\n/** Datos de facturación del cliente: nombre, condición de pago, RUT y dirección\n * de facturación (bo_BillTo). Viene de BusinessPartners, no lo escribe el vendedor. */\nasync function getDatosFacturacion(ctx, cardCode, cookie) {\n  const bp = await ctx.helpers.httpRequest({\n    method: 'GET',\n    url: SAP_BASE + \"/BusinessPartners('\" + cardCode + \"')\",\n    qs: { '$select': 'CardCode,CardName,PayTermsGrpCode,FederalTaxID,BPAddresses' },\n    headers: { Cookie: cookie },\n    json: true,\n    skipSslCertificateValidation: true,\n  });\n  const billTo = (bp.BPAddresses || []).find(a => a.AddressType === 'bo_BillTo') || null;\n  let destFact = '', destFAddr = '';\n  if (billTo) {\n    destFact = billTo.AddressName || '';\n    let countryName = billTo.Country || '';\n    if (billTo.Country) {\n      try {\n        const pais = await ctx.helpers.httpRequest({\n          method: 'GET', url: SAP_BASE + \"/Countries('\" + billTo.Country + \"')\",\n          headers: { Cookie: cookie }, json: true, skipSslCertificateValidation: true,\n        });\n        countryName = pais.Name || billTo.Country;\n      } catch (err) { /* se queda con el código de país si Countries falla */ }\n    }\n    destFAddr = [billTo.Street, billTo.City, countryName].filter(Boolean).join(' ');\n  }\n  const shipTos = (bp.BPAddresses || [])\n    .filter(a => a.AddressType === 'bo_ShipTo' && a.Active !== 'tNO')\n    .map(a => ({ name: a.AddressName || '', addr: [a.Street, a.City, a.Country].filter(Boolean).join(' '), faena: String(a.U_TipoFaena || '').trim() }));\n  return {\n    cardName: bp.CardName || '',\n    condPago: bp.PayTermsGrpCode != null ? String(bp.PayTermsGrpCode) : '',\n    rut: bp.FederalTaxID || '',\n    destFact, destFAddr, shipTos,\n  };\n}\n\nconst norm = (v) => String(v === undefined || v === null ? '' : v)\n  .trim().toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// ---------- Tramos de días -> PriceList de SAP (confirmados contra Formatted Search real) ----------\nconst ZONA_NORTE = new Set(['IQUIQUE', 'ANTOFAGASTA', 'COPIAPO']);\nconst TRAMOS_EQUIPO = [\n  [1, 6, '6', '1'], [7, 14, '7', '2'], [15, 20, '8', '3'], [21, 29, '9', '4'], [30, Infinity, '10', '5'],\n];\nconst TRAMOS_SEGURO = [\n  [1, 6, '1'], [7, 13, '2'], [14, 20, '3'], [21, 29, '4'], [30, Infinity, '5'],\n];\nfunction priceListEquipo(dur, zonaNorte) {\n  for (const [lo, hi, zn, base] of TRAMOS_EQUIPO) if (dur >= lo && dur <= hi) return zonaNorte ? zn : base;\n  return null;\n}\nfunction priceListSeguro(dur) {\n  for (const [lo, hi, l] of TRAMOS_SEGURO) if (dur >= lo && dur <= hi) return l;\n  return null;\n}\n\nconst body = $('01 · Webhook').first().json.body || {};\nconst ufRes = $('01 · Consultar tasa UF').first().json;\nconst sapCookie = 'B1SESSION=' + $('01 · Abrir sesión SAP').first().json.SessionId;\n\nconst cat = await getCatalogos.call(this);\nconst P   = cat.parametrosMap || {};\n\n// ---------- entrada ----------\nconst cardCode        = body.cardCode || body.CardCode;\nconst vendedorEmail   = (body.vendedorEmail || body.userEmail || '').toLowerCase().trim();\nconst sucursalCod     = String(body.sucursal || body.Branch || '').trim();\nconst opprIdIn        = body.opprId || body.OpprId || null;\n\n// Destino (dónde van las máquinas): texto libre -> U_Dest / U_DestAddr.\n// (U_DestFact/U_DestFAddr son la dirección de FACTURACIÓN del cliente en SAP,\n// se resuelven solas más abajo — no se tocan aquí.)\nconst destino    = body.destino || {};\nconst destLugar  = String(destino.lugar || body.destinoLugar || '').trim();\n\n// Líneas de equipo: acepta el formato nuevo (array `lineas`) y, por\n// compatibilidad, el formato viejo de un solo itemCode/durQty/descP.\nlet lineasIn = Array.isArray(body.lineas) ? body.lineas : null;\nif (!lineasIn) {\n  const legacyItem = body.itemCode || body.ItemCode;\n  if (legacyItem) {\n    lineasIn = [{\n      itemCode: legacyItem,\n      durQty: body.durQty !== undefined ? body.durQty : body.DurationQuantity,\n      descP: body.descP !== undefined ? body.descP : body.DiscountPercent,\n      incSeguro: body.incSeguro !== undefined ? body.incSeguro : true,\n      incAlistamiento: body.incAlistamiento !== undefined ? body.incAlistamiento : true,\n    }];\n  } else {\n    lineasIn = [];\n  }\n}\n\nconst stop = (msg) => [{ json: { success: false, _control: { continue: false, message: msg } } }];\n\n// ---------- 1. validación de forma ----------\nconst e = [];\nif (!cardCode)      e.push('falta el código de cliente');\nif (!vendedorEmail) e.push('falta el correo del vendedor');\nif (!sucursalCod)   e.push('falta la sucursal/territorio');\nif (!destLugar)     e.push('falta el destino (dirección) de las máquinas');\nif (!lineasIn.length) e.push('la cotización no tiene ningún equipo');\n\nconst DESCUENTO_MAX = 90; // tope duro de UI/negocio; independiente del parámetro de SAP.\n\nconst lineasParseadas = lineasIn.map((l, i) => {\n  const n = i + 1;\n  const itemCode = String(l.itemCode || l.ItemCode || '').trim();\n  const rawDur = (l.durQty !== undefined && l.durQty !== null && l.durQty !== '')\n               ? l.durQty : l.DurationQuantity;\n  const durQty = (rawDur === undefined || rawDur === null || rawDur === '')\n               ? NaN : parseInt(rawDur, 10);\n  const descP = parseFloat(l.descP !== undefined ? l.descP : l.DiscountPercent) || 0;\n  const incSeguro       = l.incSeguro !== undefined ? !!l.incSeguro : true;\n  const incAlistamiento = l.incAlistamiento !== undefined ? !!l.incAlistamiento : true;\n\n  if (!itemCode) e.push('línea ' + n + ': falta el código de equipo');\n  if (!Number.isFinite(durQty)) e.push('línea ' + n + ': falta la cantidad de días de arriendo');\n  else if (durQty < 3) e.push('línea ' + n + ': los días de arriendo deben ser 3 o más (mínimo 3, sin máximo)');\n  if (descP < 0 || descP > DESCUENTO_MAX)\n    e.push('línea ' + n + ': el descuento debe estar entre 0 y ' + DESCUENTO_MAX + '%');\n\n  return { itemCode, durQty, descP, incSeguro, incAlistamiento };\n});\n\nif (e.length) return stop('Validación fallida: ' + e.join(', ') + '.');\n\n// ---------- 2. vendedor: SIN código de SAP no se emite ----------\nconst vend = (cat.vendedores || []).find(v =>\n  String(v.email || '').toLowerCase().trim() === vendedorEmail);\nif (!vend) {\n  return stop('El correo ' + vendedorEmail + ' no aparece en la columna CORREO de ' +\n              'USUARIOS-DATOMAESTRO (libro USUARIOS-ALO). Agrégalo antes de cotizar.');\n}\nif (!vend.sales_person_code) {\n  return stop('El vendedor ' + vendedorEmail + ' está en USUARIOS-DATOMAESTRO, pero su ' +\n              'columna EMPLEADO_VENTAS no tiene un código numérico de SAP ' +\n              '(valor actual: \"' + (vend.empleado_ventas || '') + '\"). ' +\n              'Sin ese código la cotización quedaría a nombre de otra persona.');\n}\nconst slpCode = parseInt(vend.sales_person_code, 10);\n\n// ---------- 3. sucursal (13 validas SAP) y territorio ----------\nconst SUC_MAP = { 'IQUIQUE':'IQUIQUE','ANTOFAGASTA':'ANTOFAGA','COPIAPO':'COPIAPO','LA SERENA':'LASERENA','COQUIMBO':'COQUIMBO','SANTIAGO':'SANTIAGO','QUILPUE':'QUILPUE','RANCAGUA':'RANCAGUA','CURICO':'CURICO','CONCEPCION':'CONCEPCI','PUERTO MONTT':'PMONTT','VALPARAISO':'VALPARAI' };\nconst BRANCH = { 'IQUIQUE':'Iquique','ANTOFAGA':'Antofagasta','COPIAPO':'Copiapo','LASERENA':'La Serena','COQUIMBO':'Coquimbo','SANTIAGO':'Santiago','QUILPUE':'Quilpue','RANCAGUA':'Rancagua','CURICO':'Curico','CONCEPCI':'Concepcion','PMONTT':'Puerto Montt','VALPARAI':'Valparaiso' };\nconst sucUp = norm(sucursalCod);\nconst sucursalCode = BRANCH[sucUp] ? sucUp : (SUC_MAP[sucUp] || '--');\nif (sucursalCode === '--') return stop('Sucursal invalida: \"' + sucursalCod + '\". Validas: ' + Object.keys(BRANCH).join(', ') + '.');\nconst branchName = BRANCH[sucursalCode];\nconst dim1 = sucursalCode;\nconst suc = (cat.territorios || []).find(t => String(t.id) === String(sucursalCod) || norm(t.descripcion) === norm(branchName) || norm(t.descripcion) === sucUp);\nif (!suc) return stop('No se encontro el territorio SAP para la sucursal \"' + branchName + '\".');\nconst zonaNorte = ZONA_NORTE.has(sucUp);\n\n// ---------- 4. tope de descuento, desde parámetros (puede ser más estricto) ----------\nconst topeDescParam = Number(P.descuento_max_pct);\nconst topeDesc = isFinite(topeDescParam) ? Math.min(topeDescParam, DESCUENTO_MAX) : DESCUENTO_MAX;\nconst excedidas = lineasParseadas.filter(l => l.descP > topeDesc);\nif (excedidas.length) {\n  return stop('El descuento supera el tope autorizado de ' + topeDesc +\n              '% en el/los equipo(s): ' + excedidas.map(l => l.itemCode).join(', ') + '.');\n}\n\n// ---------- 5. UF: sin fallback inventado ----------\nlet ufRate = null;\nif (ufRes && ufRes.data !== undefined && ufRes.data !== null) ufRate = Number(ufRes.data);\nelse if (ufRes && ufRes.value !== undefined && ufRes.value !== null) ufRate = Number(ufRes.value);\nelse if (ufRes && ufRes.Rate !== undefined) ufRate = Number(ufRes.Rate);\n\nconst necesitaUf = lineasParseadas.some(l => l.incSeguro);\nif (necesitaUf && !(ufRate > 0)) {\n  return stop('No se pudo obtener la tasa de la UF desde SAP. ' +\n              'El seguro se calcula en UF, así que la cotización no se emite. ' +\n              'Detalle: ' + sapError(ufRes, 'respuesta vacía de GetCurrencyRate') + '.');\n}\n\n// ---------- 5b. Datos de facturación del cliente (desde SAP, no del formulario) ----------\nconst fact = await getDatosFacturacion(this, cardCode, sapCookie);\n\n// Direccion de despacho: debe ser una bo_ShipTo real del cliente CON Tipo de Faena (SAP lo exige).\nconst shipTosValidos = (fact.shipTos || []).filter(s => s.faena);\nif (!shipTosValidos.length) return stop('El cliente ' + cardCode + ' no tiene direcciones de despacho (bo_ShipTo) con \"Tipo de Faena\" configurado en SAP.');\nconst destKey = norm(destLugar);\nconst ship = shipTosValidos.find(s => norm(s.name) === destKey);\nif (!ship) return stop('El destino \"' + destLugar + '\" no es una direccion de despacho valida del cliente. Opciones con Tipo de Faena: ' + shipTosValidos.map(s => s.name).join(' | ') + '.');\nconst destName = ship.name;\nconst destAddr = ship.addr || destLugar;\n\n// Vigencia de la cotización: hoy + días de validez configurados en parámetros.\nconst vence = new Date(Date.now() + (Number(P.dias_validez_oferta) || 30) * 86400000)\n  .toISOString().slice(0, 10);\n\n// ---------- 6. resolver precio real (Items/ItemPrices de SAP) y calcular ----------\nconst round = (n) => Math.round(n);\nconst horMinDefault = Number(P.horas_min_default) || 180;\n\nconst equipoLines = [];\nconst adicionales = [];\nconst detalleLineas = []; // para trazabilidad / registro en Sheets\n\nlet netoTotal = 0;\n\nfor (let i = 0; i < lineasParseadas.length; i++) {\n  const l = lineasParseadas[i];\n  const n = i + 1; // 1-based: es el U_LineaAsoc que espera VID_RTCOTADCollection\n\n  const eqs = (cat.equipos || []).filter(x =>\n    String(x.item_code || '').toUpperCase().trim() === l.itemCode.toUpperCase());\n  if (!eqs.length) return stop('El equipo ' + l.itemCode + ' no está en la hoja \"equipos\" del catálogo.');\n  const eq = eqs[0];\n  const horMin = Number(eq.horas_min) || horMinDefault;\n\n  const plEquipo = priceListEquipo(l.durQty, zonaNorte);\n  if (!plEquipo) return stop('línea ' + n + ': no existe lista de precio para ' + l.durQty + ' días.');\n  const precioBaseDiario = await getItemPrice(this, l.itemCode, plEquipo, sapCookie);\n  if (!(precioBaseDiario > 0)) {\n    return stop('El equipo ' + l.itemCode + ' no tiene precio cargado en SAP (Lista de precios ' + plEquipo + ').');\n  }\n\n  const valHr      = round(precioBaseDiario / (horMin / 30));\n  const tarBase    = precioBaseDiario * l.durQty;\n  const montoDesc  = round(tarBase * (l.descP / 100));\n  const netoEquipo = tarBase - montoDesc;\n\n  equipoLines.push({\n    U_Linea: n,\n    U_ItemCode: l.itemCode,\n    U_ItemName: eq.nombre || l.itemCode,\n    U_DurQty: l.durQty,\n    U_DurPer: 'D',\n    U_Cantidad: 1,\n    U_Estado: 'A',\n    U_HorMin: horMin,\n    U_Moneda: P.moneda || 'CLP',\n    U_TarBase: tarBase,\n    U_ValHr: valHr, U_ValHrEx: valHr,\n    U_DescP: l.descP, U_Desc: montoDesc,\n    U_Neto: netoEquipo, U_NetoPQ: netoEquipo,\n    U_Impuesto: 'IVA',\n    U_Dim1: dim1, U_Dim2: 'ALQUILER', U_Dim3: 'VENTAS',\n    U_Dest: destName, U_DestAddr: destAddr,\n  });\n\n  let netoAdicLinea = 0;\n  let seguroClp = 0, alistaClp = 0;\n\n  if (l.incSeguro) {\n    const plSeguro = priceListSeguro(l.durQty);\n    const precioUf = plSeguro ? await getItemPrice(this, 'SEG-' + l.itemCode, plSeguro, sapCookie) : 0;\n    seguroClp = round(precioUf * ufRate * l.durQty);\n    netoAdicLinea += seguroClp;\n    adicionales.push({\n      U_ItemCode: 'SEG-' + l.itemCode,\n      U_ItemName: 'SEGURO ' + (eq.nombre || l.itemCode),\n      U_Cantidad: 1,\n      U_Dim1: dim1, U_Dim2: 'SEGUROAR', U_Dim3: 'VENTAS',\n      U_Impuesto: 'IVA', U_WhsCode: 'ADMINVER',\n      U_Precio: seguroClp, U_Neto: seguroClp, U_NetoPQ: seguroClp,\n      U_LineaAsoc: n, U_CuotaAsoc: 1,\n      U_Estado: 'A', U_DescP: 0, U_Desc: 0, U_Moneda: P.moneda || 'CLP',\n    });\n  }\n  if (l.incAlistamiento) {\n    alistaClp = round(await getItemPrice(this, 'zALI-' + l.itemCode, '1', sapCookie));\n    netoAdicLinea += alistaClp;\n    adicionales.push({\n      U_ItemCode: 'zALI-' + l.itemCode,\n      U_ItemName: 'ALISTAMIENTO ' + (eq.nombre || l.itemCode),\n      U_Cantidad: 1,\n      U_Dim1: dim1, U_Dim2: 'ALISTAAR', U_Dim3: 'VENTAS',\n      U_Impuesto: 'IVA', U_WhsCode: 'ADMINVER',\n      U_Precio: alistaClp, U_Neto: alistaClp, U_NetoPQ: alistaClp,\n      U_LineaAsoc: n, U_CuotaAsoc: 1,\n      U_Estado: 'A', U_DescP: 0, U_Desc: 0, U_Moneda: P.moneda || 'CLP',\n    });\n  }\n\n  netoTotal += netoEquipo + netoAdicLinea;\n\n  detalleLineas.push({\n    itemCode: l.itemCode, itemNombre: eq.nombre || l.itemCode, categoria: eq.categoria || '',\n    dias: l.durQty, descuentoPct: l.descP, descuentoMonto: montoDesc,\n    precioBaseDiario, seguroClp, alistamientoClp: alistaClp, neto: netoEquipo + netoAdicLinea,\n  });\n}\n\nconst ivaPct    = Number(P.iva_pct);\nconst impuesto  = round(netoTotal * (isFinite(ivaPct) ? ivaPct : 0.19));\nconst totalDoc  = netoTotal + impuesto;\nconst hoy       = new Date().toISOString().slice(0, 10);\n\n// ---------- 7. oportunidad ----------\nconst createOpp = !opprIdIn;\n// DataOwnershipfield = OHEM.empID = columna CODIGO_USUARIO del maestro de usuarios.\n// Territory = SapTerritoryID (id del catalogo de territorios). SAP (SP AG_TN_OOPR_OPV) los exige.\nconst ownerId = parseInt(vend.codigo_usuario, 10);\nconst territoryId = parseInt(suc.id, 10);\nif (createOpp && !Number.isFinite(ownerId)) {\n  return stop('El vendedor ' + vendedorEmail + ' no tiene CODIGO_USUARIO en USUARIOS-DATOMAESTRO. ' +\n              'SAP lo exige como propietario (DataOwnershipfield) de la oportunidad.');\n}\nconst opportunityPayload = createOpp ? {\n  CardCode: cardCode,\n  SalesPerson: slpCode,\n  Source: 25,\n  InterestLevel: 1,\n  StartDate: hoy,\n  PredictedClosingDate: vence,\n  MaxLocalTotal: totalDoc,\n  Remarks: 'Arriendo ' + cardCode + ' - ' + detalleLineas.map(d => d.itemCode).join('+') + '. Creada automáticamente desde el cotizador web.',\n  Status: 'sos_Open',\n  OpportunityName: ('ARRIENDO ' + cardCode + ' ' + detalleLineas.map(d => d.itemCode).join('+')).slice(0, 100),\n  DataOwnershipfield: ownerId,\n  Territory: territoryId,\n  ClosingType: 'sos_Days',\n  OpportunityType: 'boOpSales',\n  U_TipoNegocio: 'ARRIENDO',\n  U_G_User: vendedorEmail,\n  SalesOpportunitiesLines: [{\n    SalesPerson: slpCode, StartDate: hoy, ClosingDate: vence, StageKey: 2,\n    PercentageRate: 1, MaxLocalTotal: totalDoc, Status: 'so_Open',\n    DocumentType: 'bodt_MinusOne', U_TipoDocArriendo: '--',\n  }],\n} : null;\n\nconst quotePayload = {\n  U_CardCode: cardCode,\n  U_CardName: fact.cardName,\n  U_Contacto: '',\n  U_RefDate: hoy, U_DocDate: hoy, U_DueDate: vence,\n  U_Vendedor: String(slpCode),\n  U_OpprId: opprIdIn ? parseInt(opprIdIn, 10) : null,\n  U_Estado: 'A',\n  U_PerFact: P.periodo_facturacion_default || 'D',\n  U_DiaFact: '',\n  U_Moneda: P.moneda || 'CLP',\n  U_DescP: 0, U_Desc: 0,\n  U_Neto: netoTotal, U_Impuesto: impuesto,\n  U_Total: totalDoc, U_TotalPQ: totalDoc,\n  U_Sucursal: sucursalCode,\n  U_Dest: destName,\n  U_DestAddr: destAddr,\n  U_DestFact: fact.destFact,\n  U_DestFAddr: fact.destFAddr,\n  U_CondPago: fact.condPago,\n  U_Rut: fact.rut,\n  U_APROB_COM: 'NO',\n  U_APROB_FIN: 'NO',\n  U_APROB_LOG: 'NO',\n  U_TipoContrato: 'ARRIENDO',\n  U_Comment: 'Creada automáticamente desde el cotizador web',\n  VID_RTCOTDCollection: equipoLines,\n  VID_RTCOTADCollection: adicionales,\n};\n\nreturn [{ json: {\n  success: true, createOpp, opportunityPayload, quotePayload,\n  _calculo: {\n    zonaNorte, sucursal: suc.descripcion, slpCode, ufRate,\n    netoTotal, impuesto, totalDoc,\n    destino: { lugar: destLugar },\n    lineas: detalleLineas,\n    vendedorEmail, vendedorNombre: vend.nombre || '',\n    cardCode,\n  },\n} }];"
       },
       "id": "4a57cba2-664c-43a5-ae09-ad6238e4628a",
       "name": "01 · Validar y calcular",
@@ -363,7 +363,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res  = $input.first().json;\nconst prev = $('01 · ¿Crear oportunidad?').first().json || {};\n\nif (res && res.DocEntry) {\n  return [{ json: { success: true, data: {\n    docEntry: res.DocEntry, docNum: res.DocNum,\n    opprId: prev.createdOpprId || (prev.quotePayload || {}).U_OpprId || null,\n    total: (prev._calculo || {}).totalDoc,\n  } } }];\n}\nreturn [{ json: { success: false,\n  message: sapError(res, 'SAP rechazó la cotización sin devolver un motivo.') } }];\n"
+        "jsCode": "/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\n// Respuesta del POST VID_RTCOT (con neverError puede traer {error:...}).\nconst res = ($input.all()[0] && $input.all()[0].json) || {};\n\nif (res && res.DocEntry) {\n  // opprId y total salen del propio documento creado (confiable).\n  return [{ json: { success: true, data: {\n    docEntry: res.DocEntry,\n    docNum: res.DocNum,\n    opprId: res.U_OpprId != null ? res.U_OpprId : null,\n    total: res.U_Total != null ? res.U_Total : null,\n  } } }];\n}\nreturn [{ json: { success: false,\n  message: sapError(res, 'SAP rechazÃ³ la cotizaciÃ³n sin devolver un motivo.') } }];"
       },
       "id": "2809623c-bcff-4d04-8c91-71675ba5c009",
       "name": "01 · Validar respuesta SAP",
@@ -454,7 +454,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -534,7 +534,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -572,7 +572,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -616,7 +616,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -675,7 +675,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst b = $('03 · Webhook').first().json.body || {};\n\nconst texto  = String(b.texto || '').trim();\nconst estado = String(b.estado || '').trim();   // O | W | L\nconst etapa  = String(b.etapa || '').trim();\nconst q = (s) => String(s).replace(/'/g, \"''\");\n\nconst conds = [];\nif (estado) {\n  const m = { O: 'sos_Open', W: 'sos_Won', L: 'sos_Lost' };\n  if (m[estado]) conds.push(\"Status eq '\" + m[estado] + \"'\");\n}\nif (etapa) conds.push('SalesStage eq ' + parseInt(etapa, 10));\nif (texto) {\n  const t = q(texto.toUpperCase());\n  conds.push(\"(contains(toupper(CardName),'\" + t + \"') or contains(toupper(Remarks),'\" + t + \"'))\");\n}\nconst select = 'OpprId,CardCode,CardName,Name,Remarks,SalesPerson,SalesStage,MaxLocalTotal,PredictedClosingDate,Status,StartDate';\nlet qs = 'SalesOpportunities?$select=' + select + '&$orderby=OpprId desc&$top=100';\nif (conds.length) qs += '&$filter=' + encodeURIComponent(conds.join(' and '));\nreturn [{ json: { success: true, query: qs } }];\n\n"
+        "jsCode": "\nconst b = $('03 · Webhook').first().json.body || {};\n\nconst texto  = String(b.texto || '').trim();\nconst estado = String(b.estado || '').trim();   // O | W | L\nconst etapa  = String(b.etapa || '').trim();\nconst q = (s) => String(s).replace(/'/g, \"''\");\n\nconst conds = [];\nif (estado) {\n  const m = { O: 'sos_Open', W: 'sos_Won', L: 'sos_Lost' };\n  if (m[estado]) conds.push(\"Status eq '\" + m[estado] + \"'\");\n}\nif (etapa) conds.push('SalesStage eq ' + parseInt(etapa, 10));\nif (texto) {\n  conds.push(\"contains(Remarks,'\" + q(texto) + \"')\");\n}\nlet qs = 'SalesOpportunities?$orderby=SequentialNo desc&$top=100';\nif (conds.length) qs += '&$filter=' + encodeURIComponent(conds.join(' and '));\nreturn [{ json: { success: true, query: qs } }];\n\n"
       },
       "id": "7a923725-c1e1-42f1-ad33-8de1b54e5376",
       "name": "03 · Armar consulta",
@@ -696,7 +696,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -734,7 +734,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -753,7 +753,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (!res || res.error) {\n  return [{ json: { success: false,\n    message: sapError(res, 'SAP no devolvió resultados para esta consulta.') } }];\n}\nconst rows = Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : []);\n\nconst est = { sos_Open: 'O', sos_Won: 'W', sos_Lost: 'L' };\nconst list = rows.map(r => ({\n  OpprId: r.OpprId, CardCode: r.CardCode, CardName: r.CardName,\n  Remarks: r.Remarks || r.Name || '',\n  SalesPerson: r.SalesPerson,\n  SalesStage: r.SalesStage != null ? String(r.SalesStage) : '1',\n  MaxSumLoc: r.MaxLocalTotal || 0,\n  PredDate: r.PredictedClosingDate || null,\n  Status: est[r.Status] || 'O',\n}));\nreturn [{ json: { success: true, oportunidades: list,\n  message: list.length ? undefined : 'No hay oportunidades que coincidan con el filtro.' } }];\n\n"
+        "jsCode": "\n/** Extrae el mensaje de error de una respuesta del Service Layer. */\nfunction sapError(res, fallback) {\n  if (!res) return fallback;\n  if (res.error) {\n    const e = res.error;\n    if (e.message && e.message.value) return e.message.value;\n    if (typeof e.message === 'string') return e.message;\n    if (typeof e === 'string') return e;\n  }\n  if (typeof res === 'string' && res.trim()) return res.slice(0, 300);\n  return fallback;\n}\n\nconst res = $input.first().json;\nif (!res || res.error) {\n  return [{ json: { success: false,\n    message: sapError(res, 'SAP no devolvió resultados para esta consulta.') } }];\n}\nconst rows = Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : []);\n\nconst est = { sos_Open: 'O', sos_Won: 'W', sos_Lost: 'L' };\nconst list = rows.map(r => ({\n  OpprId: r.SequentialNo, CardCode: r.CardCode, CardName: r.CardName,\n  Remarks: r.Remarks || r.Name || '',\n  SalesPerson: r.SalesPerson,\n  SalesStage: r.SalesStage != null ? String(r.SalesStage) : '1',\n  MaxSumLoc: r.MaxLocalTotal || 0,\n  PredDate: r.PredictedClosingDate || null,\n  Status: est[r.Status] || 'O',\n}));\nreturn [{ json: { success: true, oportunidades: list,\n  message: list.length ? undefined : 'No hay oportunidades que coincidan con el filtro.' } }];\n\n"
       },
       "id": "ceac0ee5-667e-46a3-8ad4-a6d7a1c21bf4",
       "name": "03 · Formatear salida",
@@ -778,7 +778,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -891,7 +891,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -933,7 +933,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($('04 · Armar payload').first().json.payload) }}",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -977,7 +977,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1057,7 +1057,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1095,7 +1095,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1139,7 +1139,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1252,7 +1252,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1294,7 +1294,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($('06 · Armar payload').first().json.payload) }}",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1338,7 +1338,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1418,7 +1418,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1456,7 +1456,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1500,7 +1500,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1613,7 +1613,7 @@
         "specifyBody": "json",
         "jsonBody": "{ \"Language\": 25 }",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1655,7 +1655,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($('08 · Armar payload').first().json.payload) }}",
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1701,7 +1701,7 @@
           ]
         },
         "options": {
-          "allowUnauthorizedCerts": false,
+          "allowUnauthorizedCerts": true,
           "response": {
             "response": {
               "neverError": true
@@ -1800,6 +1800,150 @@
         13504,
         3424
       ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes/direcciones",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "09 · Webhook",
+      "name": "09 · Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        11584,
+        8700
+      ],
+      "webhookId": "09 · Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Login",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"Language\": 25 }",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "09 · Abrir sesión SAP",
+      "name": "09 · Abrir sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        11856,
+        8700
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "kj68PQLQqh5clt6L",
+          "name": "Custom Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://sap.alo-group.com:50000/b1s/v1/BusinessPartners('' + $('09 · Webhook').first().json.body.cardCode + '')?$select=CardCode,CardName,BPAddresses' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('09 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "09 · Consultar BP",
+      "name": "09 · Consultar BP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12128,
+        8700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const bp = $input.first().json;\nif (!bp || bp.error) return [{ json: { success:false, message: (bp&&bp.error&&bp.error.message&&(bp.error.message.value||bp.error.message))||'No se pudo leer el cliente.' } }];\nconst ship = (bp.BPAddresses||[]).filter(a=>a.AddressType==='bo_ShipTo' && a.Active!=='tNO' && String(a.U_TipoFaena||'').trim())\n  .map(a=>({ name:a.AddressName||'', addr:[a.Street,a.City,a.Country].filter(Boolean).join(' '), faena:String(a.U_TipoFaena||'').trim() }));\nreturn [{ json: { success:true, cardName: bp.CardName||'', direcciones: ship } }];"
+      },
+      "id": "09 · Formatear",
+      "name": "09 · Formatear",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        12400,
+        8700
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ $json.success === false ? 400 : 200 }}"
+        }
+      },
+      "id": "09 · Responder",
+      "name": "09 · Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        12672,
+        8700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sap.alo-group.com:50000/b1s/v1/Logout",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "=B1SESSION={{ $('09 · Abrir sesión SAP').first().json.SessionId }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "09 · Cerrar sesión SAP",
+      "name": "09 · Cerrar sesión SAP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12944,
+        8700
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -1902,7 +2046,7 @@
         ],
         [
           {
-            "node": "01 · Cerrar sesión SAP",
+            "node": "01 · Responder",
             "type": "main",
             "index": 0
           }
@@ -1964,7 +2108,7 @@
       "main": [
         [
           {
-            "node": "01 · Armar fila registro",
+            "node": "01 · Responder",
             "type": "main",
             "index": 0
           }
@@ -1986,29 +2130,7 @@
       "main": [
         [
           {
-            "node": "01 · Preparar respuesta",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "01 · Preparar respuesta": {
-      "main": [
-        [
-          {
             "node": "01 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "01 · Cerrar sesión SAP": {
-      "main": [
-        [
-          {
-            "node": "01 · Responder",
             "type": "main",
             "index": 0
           }
@@ -2060,17 +2182,6 @@
       ]
     },
     "02 · Formatear salida": {
-      "main": [
-        [
-          {
-            "node": "02 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "02 · Cerrar sesión SAP": {
       "main": [
         [
           {
@@ -2126,17 +2237,6 @@
       ]
     },
     "03 · Formatear salida": {
-      "main": [
-        [
-          {
-            "node": "03 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "03 · Cerrar sesión SAP": {
       "main": [
         [
           {
@@ -2213,17 +2313,6 @@
       "main": [
         [
           {
-            "node": "04 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "04 · Cerrar sesión SAP": {
-      "main": [
-        [
-          {
             "node": "04 · Responder",
             "type": "main",
             "index": 0
@@ -2276,17 +2365,6 @@
       ]
     },
     "05 · Formatear salida": {
-      "main": [
-        [
-          {
-            "node": "05 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "05 · Cerrar sesión SAP": {
       "main": [
         [
           {
@@ -2363,17 +2441,6 @@
       "main": [
         [
           {
-            "node": "06 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "06 · Cerrar sesión SAP": {
-      "main": [
-        [
-          {
             "node": "06 · Responder",
             "type": "main",
             "index": 0
@@ -2426,17 +2493,6 @@
       ]
     },
     "07 · Formatear salida": {
-      "main": [
-        [
-          {
-            "node": "07 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "07 · Cerrar sesión SAP": {
       "main": [
         [
           {
@@ -2513,17 +2569,6 @@
       "main": [
         [
           {
-            "node": "08 · Cerrar sesión SAP",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "08 · Cerrar sesión SAP": {
-      "main": [
-        [
-          {
             "node": "08 · Responder",
             "type": "main",
             "index": 0
@@ -2553,7 +2598,150 @@
         ],
         [
           {
-            "node": "01 · Cerrar sesión SAP",
+            "node": "01 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01 · Responder": {
+      "main": [
+        [
+          {
+            "node": "01 · Armar fila registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 · Responder": {
+      "main": [
+        [
+          {
+            "node": "02 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 · Responder": {
+      "main": [
+        [
+          {
+            "node": "03 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 · Responder": {
+      "main": [
+        [
+          {
+            "node": "04 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 · Responder": {
+      "main": [
+        [
+          {
+            "node": "05 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 · Responder": {
+      "main": [
+        [
+          {
+            "node": "06 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 · Responder": {
+      "main": [
+        [
+          {
+            "node": "07 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 · Responder": {
+      "main": [
+        [
+          {
+            "node": "08 · Cerrar sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 · Webhook": {
+      "main": [
+        [
+          {
+            "node": "09 · Abrir sesión SAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 · Abrir sesión SAP": {
+      "main": [
+        [
+          {
+            "node": "09 · Consultar BP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 · Consultar BP": {
+      "main": [
+        [
+          {
+            "node": "09 · Formatear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 · Formatear": {
+      "main": [
+        [
+          {
+            "node": "09 · Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 · Responder": {
+      "main": [
+        [
+          {
+            "node": "09 · Cerrar sesión SAP",
             "type": "main",
             "index": 0
           }
