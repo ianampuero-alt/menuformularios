@@ -129,14 +129,16 @@
         del: function (k) { try { sessionStorage.removeItem(k); } catch (e) {} },
 
         /**
-         * Normaliza un RUT a CardCode de SAP: 76.721.028-0 -> C767210280
-         * (misma regla que ya usaba historicoc.html, centralizada aquí).
+         * Normaliza un RUT a CardCode de SAP: 76.721.028-0 -> C76721028-0
+         * (SAP guarda el CardCode CON guión antes del dígito verificador).
          */
         rutToCardCode: function (rut) {
             if (!rut) return '';
             var raw = String(rut).replace(/[^0-9kK]/gi, '').toUpperCase();
             if (!raw) return '';
-            return raw.charAt(0) === 'C' ? raw : 'C' + raw;
+            if (raw.charAt(0) === 'C') return raw;
+            if (raw.length < 2) return 'C' + raw;
+            return 'C' + raw.slice(0, -1) + '-' + raw.slice(-1);
         },
 
         /** Formatea 767210280 -> 76.721.028-0 para mostrar en pantalla. */
