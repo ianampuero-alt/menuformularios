@@ -183,7 +183,7 @@
         </div>
     </div>
 
-    <button class="btn-back waves-effect" id="btnMenuBack" onclick="window.location.href='menucliente.html'">
+    <button class="btn-back waves-effect" id="btnMenuBack" onclick="volverAlMenu()">
         <i class="material-icons">arrow_back</i> Menú
     </button>
 </header>
@@ -304,15 +304,53 @@
     let currentRut = '';
     let currentCardCode = '';
 
-    document.addEventListener('DOMContentLoaded', async function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        let rut = urlParams.get('rut') || sessionStorage.getItem('sapRut') || '';
+    /* Botón "Menú": vuelve al dashboard comercial si hay un vendedor logueado
+       (lado interno), o al menú del cliente si se entró por el portal. */
+    function volverAlMenu() {
+        var u = (window.app && app.session) ? app.session.usuario() : null;
+        window.location.href = (u && u.email) ? 'dashboard.html' : 'menucliente.html';
+    }
 
-        if (!rut) { window.location.href = 'index.html'; return; }
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Puente lado interno -> portal: si un vendedor ya seleccionó un cliente
+        // en clientes.html (alo_client_rut), que esta hoja lo herede aunque no
+        // haya pasado por el login de cliente (sapRut).
+        if (window.app && app.session && app.session.bridge) app.session.bridge();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const clienteInterno = (window.app && app.session) ? app.session.cliente() : null;
+        let rut = urlParams.get('rut')
+               || sessionStorage.getItem('sapRut')
+               || (clienteInterno && clienteInterno.rut)
+               || '';
+
+        if (!rut) {
+            // Sin RUT en ningún vocabulario: no hay sesión de cliente activa.
+            // Si viene del lado comercial (hay vendedor logueado), lo mandamos a
+            // elegir un cliente en vez de expulsarlo al login como si hubiera
+            // cerrado sesión.
+            var u = (window.app && app.session) ? app.session.usuario() : null;
+            if (window.app && u && u.email) {
+                if (app.ui && app.ui.toast) {
+                    app.ui.toast('Selecciona un cliente para ver su situación comercial.', false);
+                }
+                setTimeout(function () { window.location.href = 'clientes.html'; }, 1200);
+            } else {
+                window.location.href = 'index.html';
+            }
+            return;
+        }
 
         currentRut = rut.trim();
         let rawRut = currentRut.replace(/[^0-9kK]/gi, '').toUpperCase();
-        currentCardCode = rawRut.startsWith('C') ? rawRut : 'C' + rawRut;
+        // CardCode de SAP: va CON guión antes del dígito verificador (C77082270-K),
+        // no pegado (misma regla que Session.rutToCardCode en app.js).
+        if (window.app && app.session && app.session.rutToCardCode) {
+            currentCardCode = rawRut.startsWith('C') ? rawRut : app.session.rutToCardCode(rawRut);
+        } else {
+            currentCardCode = rawRut.startsWith('C') ? rawRut
+                : (rawRut.length > 1 ? 'C' + rawRut.slice(0, -1) + '-' + rawRut.slice(-1) : 'C' + rawRut);
+        }
 
         sessionStorage.setItem('sapRut', currentRut);
 
