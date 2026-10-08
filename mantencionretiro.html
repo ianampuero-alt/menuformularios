@@ -318,11 +318,14 @@
         serie: eq.U_NumSerie || eq.U_NroSerie || "",
         familia: eq.U_Familia || "",
         sFamilia: eq.U_sFamilia || subF,
-        tieneSolicitudPendiente: eq.tieneSolicitudPendiente === true
+        tieneSolicitudPendiente: eq.tieneSolicitudPendiente === true,
+        tiposSolicitudPendiente: Array.isArray(eq.tiposSolicitudPendiente) ? eq.tiposSolicitudPendiente : []
       };
       equiposPorContrato[indexContrato].push(datosEquipo);
       var badge = datosEquipo.tieneSolicitudPendiente
-        ? '<span class="badge" style="background:#F0851E;color:#fff;font-weight:600;margin-left:8px;">Con solicitud pendiente</span>'
+        ? '<span class="badge" style="background:#F0851E;color:#fff;font-weight:600;margin-left:8px;">Con solicitud pendiente' +
+          (datosEquipo.tiposSolicitudPendiente.length ? ': ' + datosEquipo.tiposSolicitudPendiente.join(' + ') : '') +
+          '</span>'
         : '';
       html += `
         <div class="item-equipo-wrapper">
