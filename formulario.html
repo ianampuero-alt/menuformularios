@@ -469,6 +469,12 @@
             comunaSelect.appendChild(opt);
             if (norm(t) === norm(comunaSeleccionada)) comunaMatch = t;
         });
+        if (!comunaMatch && comunaSeleccionada) {
+            // La comuna que viene de SAP no está en el catálogo fijo: la agregamos igual que se hace con Industria.
+            const t = comunaSeleccionada.trim();
+            comunaSelect.add(new Option(t, t));
+            comunaMatch = t;
+        }
         if (comunaMatch) comunaSelect.value = comunaMatch;   // fuerza el valor canónico exacto
         M.FormSelect.init(comunaSelect);
 
@@ -482,6 +488,11 @@
             citySelect.appendChild(opt);
             if (norm(t) === norm(ciudadSeleccionada)) ciudadMatch = t;
         });
+        if (!ciudadMatch && ciudadSeleccionada) {
+            const t = ciudadSeleccionada.trim();
+            citySelect.add(new Option(t, t));
+            ciudadMatch = t;
+        }
         if (ciudadMatch) citySelect.value = ciudadMatch;     // fuerza el valor canónico exacto
         M.FormSelect.init(citySelect);
     }

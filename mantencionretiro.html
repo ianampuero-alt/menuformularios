@@ -317,9 +317,13 @@
         direccion: direccionCompleta,
         serie: eq.U_NumSerie || eq.U_NroSerie || "",
         familia: eq.U_Familia || "",
-        sFamilia: eq.U_sFamilia || subF
+        sFamilia: eq.U_sFamilia || subF,
+        tieneSolicitudPendiente: eq.tieneSolicitudPendiente === true
       };
       equiposPorContrato[indexContrato].push(datosEquipo);
+      var badge = datosEquipo.tieneSolicitudPendiente
+        ? '<span class="badge" style="background:#F0851E;color:#fff;font-weight:600;margin-left:8px;">Con solicitud pendiente</span>'
+        : '';
       html += `
         <div class="item-equipo-wrapper">
           <input class="form-check-input equipo-chk" type="checkbox"
@@ -328,7 +332,7 @@
                  onchange="actualizarContador(${indexContrato})">
           <div class="item-equipo">
             <div class="info-equipo">
-              <span class="fs-5">${identificador}</span><br>
+              <span class="fs-5">${identificador}</span>${badge}<br>
               <small class="text-muted">${nombre}</small>
             </div>
           </div>
