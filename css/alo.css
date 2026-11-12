@@ -103,13 +103,22 @@ body {
     color: #fff;
 }
 
-.nav-menu a.logout {
+.navbar a.logout,
+.navbar a.btn-logout {
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     background: rgba(255, 255, 255, 0.1);
     margin-left: 8px;
+    transition: all 0.2s;
 }
 
-.nav-menu a.logout:hover {
+.navbar a.logout:hover,
+.navbar a.btn-logout:hover {
     background: var(--err);
     border-color: var(--err);
 }

@@ -570,6 +570,24 @@
                 var act = m.href.toLowerCase() === actual ? ' class="active"' : '';
                 return '<a href="' + m.href + '"' + act + '>' + UI.esc(m.label) + '</a>';
             }).join('\n');
+
+            // El botón de logout debe quedar SIEMPRE como hijo directo de .navbar
+            // (hermano de <nav>), nunca dentro de ella: así el navbar (space-between)
+            // lo manda solo al extremo derecho, igual en todas las páginas. Si la
+            // página ya traía el botón anidado dentro de <nav>, el innerHTML de
+            // arriba lo acaba de borrar, así que lo recreamos aquí si falta.
+            var logout = null;
+            Array.prototype.forEach.call(navbar.children, function (el) {
+                if (el.classList && (el.classList.contains('logout') || el.classList.contains('btn-logout') || el.classList.contains('btn-back'))) logout = el;
+            });
+            if (!logout) {
+                logout = document.createElement('a');
+                logout.href = '#';
+                logout.className = 'logout';
+                logout.textContent = 'Cerrar Sesión';
+                logout.addEventListener('click', function (e) { e.preventDefault(); app.logout(); });
+                navbar.appendChild(logout);
+            }
         },
 
         /**
