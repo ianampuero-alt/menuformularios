@@ -29,7 +29,7 @@
      * ====================================================================== */
 
     var CFG = {
-        N8N_BASE: 'https://alogroup.app.n8n.cloud',
+        N8N_BASE: 'https://n8n.alo-group.com',
 
         // Timeout por request. n8n + SAP Service Layer puede ser lento en
         // consultas de cartera, por eso 45s y no los 10s típicos.
