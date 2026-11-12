@@ -81,6 +81,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    background: transparent;
 }
 
 .nav-menu a {
